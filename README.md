@@ -19,7 +19,31 @@ pnpm dev          # http://localhost:5173
 | `pnpm lint`      | ESLint                                       |
 
 Le build est statique (routes en hash, chemins relatifs) : `apps/web/dist` peut être servi tel quel
-depuis n'importe quel hébergement.
+depuis n'importe quel hébergement, à la racine comme dans un sous-dossier.
+
+Tester le build de production en local : `pnpm build && pnpm preview`.
+
+## Déploiement (GitHub Pages)
+
+Site : **https://kiitoss.github.io/axomaster/**
+
+Chaque tag poussé déclenche `.github/workflows/deploy.yml` (tests, build, publication) :
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Le tag publié s'affiche en bas de la galerie. Le workflow peut aussi être lancé à la main depuis
+l'onglet **Actions** (« Run workflow »).
+
+Configuration à faire une seule fois sur GitHub :
+
+1. **Settings → Pages → Build and deployment → Source : GitHub Actions**.
+2. **Settings → Environments → github-pages → Deployment branches and tags** : ajouter une règle
+   de type **Tag** avec le motif `*`. Par défaut seule la branche `main` peut déployer, et un
+   déploiement depuis un tag est refusé (« Tag … is not allowed to deploy to github-pages due to
+   environment protection rules »).
 
 ## Structure
 

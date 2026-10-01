@@ -61,6 +61,13 @@ Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
   feuille basse. Gestes de l'éditeur en Pointer Events (glisser, pincer à deux doigts).
 - Formatage : Prettier (sans point-virgule, guillemets simples, 100 colonnes).
 
+## Déploiement
+
+GitHub Pages via `.github/workflows/deploy.yml`, déclenché par chaque tag poussé. Le site est
+servi sous un sous-chemin (`/axomaster/`) : garder `base: './'` dans `vite.config.ts` et
+`createWebHashHistory()` dans le routeur, ne jamais écrire de chemin absolu (`/assets/…`) vers
+une ressource. `VITE_APP_VERSION` contient le tag publié.
+
 ## Hors périmètre actuel
 
 Backend, comptes, échange de cartes, boosters, app mobile Flutter. Garder `card-model`

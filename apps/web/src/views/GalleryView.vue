@@ -14,6 +14,7 @@ import ExportDialog from '@/components/gallery/ExportDialog.vue'
 const store = useCardsStore()
 const router = useRouter()
 const toast = useToast()
+const version = import.meta.env.VITE_APP_VERSION || 'dev'
 
 type Sort = 'recent' | 'name' | 'rarity' | 'number'
 
@@ -160,6 +161,8 @@ async function loadSamples() {
       </button>
     </p>
 
+    <p class="version muted">AxoMaster · {{ version }}</p>
+
     <CardViewer
       v-if="viewerIndex !== null"
       v-model:index="viewerIndex"
@@ -303,6 +306,13 @@ async function loadSamples() {
 
 .samples-link {
   margin-top: var(--space-7);
+  text-align: center;
+}
+
+.version {
+  margin-top: var(--space-5);
+  font-size: 11px;
+  letter-spacing: 0.08em;
   text-align: center;
 }
 
