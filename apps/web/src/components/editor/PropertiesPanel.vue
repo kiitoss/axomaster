@@ -152,7 +152,7 @@ const WEIGHTS = [
       >
         <ImagePlus />
         <span>{{ card.photo.imageId ? 'Remplacer la photo' : 'Choisir une photo' }}</span>
-        <span class="muted">ou déposez une image ici</span>
+        <span class="muted drop-hint">ou déposez une image ici</span>
       </button>
 
       <template v-if="card.photo.imageId">
@@ -176,7 +176,9 @@ const WEIGHTS = [
             <Trash2 /> Retirer
           </button>
         </div>
-        <p class="muted tip">Astuce : glissez directement sur la photo pour la recadrer, molette pour zoomer.</p>
+        <p class="muted tip">
+          Astuce : glissez directement sur la photo pour la recadrer, molette ou pincement pour zoomer.
+        </p>
       </template>
     </template>
 
@@ -429,5 +431,42 @@ hr {
 
 .actions {
   margin-top: var(--space-2);
+}
+
+@media (pointer: coarse) {
+  .drop-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .panel {
+    padding: var(--space-4) var(--space-4) var(--space-6);
+  }
+
+  /* Le titre est déjà dans l'onglet ; on garde seulement le nom éditable d'un calque. */
+  header .eyebrow,
+  header h3 {
+    display: none;
+  }
+
+  .title-input {
+    font-size: 22px;
+  }
+
+  .rarities {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  .rarity {
+    border-color: var(--line);
+    background: var(--surface);
+  }
+
+  .drop {
+    padding: var(--space-4);
+  }
 }
 </style>

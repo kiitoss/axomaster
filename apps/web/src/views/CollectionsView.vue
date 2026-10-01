@@ -126,9 +126,17 @@ h1 {
   margin-top: var(--space-3);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 860px) {
   .page {
     padding: var(--space-5) var(--space-4);
+  }
+
+  h1 {
+    font-size: 40px;
+  }
+
+  .count {
+    width: auto;
   }
 }
 </style>

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, RouterLink, useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Check, Image, Redo2, Undo2 } from 'lucide-vue-next'
+import { ArrowLeft, Check, Image, Layers, Redo2, SlidersHorizontal, Undo2 } from 'lucide-vue-next'
 import { createBlankCard, type Card } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
 import { provideEditor } from '@/composables/editor'
 import { useHistory } from '@/composables/useHistory'
 import { useToast } from '@/composables/useToast'
+import { MOBILE_QUERY, useMediaQuery } from '@/composables/useMediaQuery'
 import { clone } from '@/lib/clone'
 import { exportCardPng } from '@/lib/exportPng'
 import EditorCanvas from '@/components/editor/EditorCanvas.vue'
@@ -25,6 +26,18 @@ const canvas = ref<InstanceType<typeof EditorCanvas>>()
 
 const history = useHistory(draft)
 const editor = provideEditor(draft, history.commit)
+
+// Sur mobile, les deux panneaux latéraux deviennent des onglets sous la carte.
+const isMobile = useMediaQuery(MOBILE_QUERY)
+const tab = ref<'layers' | 'props'>('props')
+watch(editor.selected, () => (tab.value = 'props'))
+
+const propsLabel = computed(() => {
+  const selected = editor.selected.value
+  if (selected === 'card') return 'Carte'
+  if (selected === 'photo') return 'Photo'
+  return editor.selectedLayer.value?.name ?? 'Réglages'
+})
 
 function load(id: string | undefined) {
   const existing = id ? store.getCard(id) : undefined
@@ -149,22 +162,26 @@ onBeforeUnmount(() => {
 <template>
   <div class="editor">
     <div class="bar">
-      <RouterLink to="/" class="btn btn-ghost btn-sm back"><ArrowLeft /> Galerie</RouterLink>
+      <RouterLink to="/" class="btn btn-ghost btn-sm back" aria-label="Retour à la galerie">
+        <ArrowLeft /> <span class="text">Galerie</span>
+      </RouterLink>
       <div class="title">
         <span class="eyebrow">{{ isNew ? 'Nouvelle carte' : 'Modifier' }}</span>
         <h1>{{ draft.name || 'Sans titre' }}</h1>
       </div>
-      <div class="row">
+      <div class="row actions">
         <span class="status muted" :class="{ dirty }">
           {{ dirty ? 'Non enregistrée' : 'Enregistrée' }}
         </span>
-        <button class="btn btn-ghost btn-icon" type="button" title="Annuler (Ctrl+Z)" :disabled="!history.canUndo.value" @click="history.undo()">
+        <button class="btn btn-ghost btn-icon" type="button" title="Annuler (Ctrl+Z)" aria-label="Annuler" :disabled="!history.canUndo.value" @click="history.undo()">
           <Undo2 />
         </button>
-        <button class="btn btn-ghost btn-icon" type="button" title="Rétablir (Ctrl+Y)" :disabled="!history.canRedo.value" @click="history.redo()">
+        <button class="btn btn-ghost btn-icon" type="button" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" :disabled="!history.canRedo.value" @click="history.redo()">
           <Redo2 />
         </button>
-        <button class="btn btn-sm" type="button" title="Exporter en image" @click="exportPng"><Image /> PNG</button>
+        <button class="btn btn-sm png" type="button" title="Exporter en image" aria-label="Exporter en PNG" @click="exportPng">
+          <Image /> <span class="text">PNG</span>
+        </button>
         <button class="btn btn-primary btn-sm" type="button" :disabled="!dirty" @click="save">
           <Check /> Enregistrer
         </button>
@@ -172,9 +189,19 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="workspace">
-      <aside class="side left"><LayerPanel /></aside>
+      <aside v-show="!isMobile || tab === 'layers'" class="side left"><LayerPanel /></aside>
       <section class="center"><EditorCanvas ref="canvas" /></section>
-      <aside class="side right"><PropertiesPanel /></aside>
+      <aside v-show="!isMobile || tab === 'props'" class="side right"><PropertiesPanel /></aside>
+
+      <nav v-if="isMobile" class="tabs" role="tablist">
+        <button type="button" role="tab" :aria-selected="tab === 'layers'" :class="{ active: tab === 'layers' }" @click="tab = 'layers'">
+          <Layers /> Calques
+          <span v-if="draft.layers.length" class="count">{{ draft.layers.length }}</span>
+        </button>
+        <button type="button" role="tab" :aria-selected="tab === 'props'" :class="{ active: tab === 'props' }" @click="tab = 'props'">
+          <SlidersHorizontal /> <span class="tab-label">{{ propsLabel }}</span>
+        </button>
+      </nav>
     </div>
   </div>
 </template>
@@ -183,7 +210,7 @@ onBeforeUnmount(() => {
 .editor {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--header-h));
+  height: calc(100dvh - var(--header-h));
 }
 
 .bar {
@@ -265,27 +292,103 @@ onBeforeUnmount(() => {
   }
 }
 
+/* Mobile : plein écran, carte en haut, panneau à onglets en bas. */
 @media (max-width: 860px) {
   .editor {
-    height: auto;
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top);
   }
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-  .center {
-    order: -1;
-  }
-  .side {
-    border: 0;
-    border-top: 1px solid var(--line);
-  }
+
   .bar {
     grid-template-columns: auto 1fr;
-    height: auto;
-    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+    height: 56px;
+    padding: 0 var(--space-2);
   }
-  .title {
+
+  .title,
+  .status,
+  .text {
     display: none;
+  }
+
+  .back,
+  .png {
+    width: 40px;
+    padding: 0;
+  }
+
+  .actions {
+    gap: 2px;
+  }
+
+  .workspace {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .center {
+    flex: 1 1 auto;
+    min-height: 220px;
+  }
+
+  .tabs {
+    order: 1;
+    flex: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .tabs button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 0;
+    height: 46px;
+    padding: 0 var(--space-3);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    font: 500 13px var(--font-sans);
+    color: var(--ink-3);
+    cursor: pointer;
+  }
+
+  .tabs button.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+
+  .tabs svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+  }
+
+  .tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .count {
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--paper-3);
+    font-size: 11px;
+    line-height: 18px;
+  }
+
+  .side {
+    order: 2;
+    flex: none;
+    height: min(46dvh, 440px);
+    padding-bottom: env(safe-area-inset-bottom);
+    border: 0;
   }
 }
 </style>

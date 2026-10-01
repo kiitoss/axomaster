@@ -66,16 +66,21 @@ const year = computed(() => new Date(props.card.createdAt).getFullYear())
 
 const tilt = ref({ rx: 0, ry: 0, mx: 50, my: 50, active: false })
 
+/** Souris : suit le survol. Doigt : suit le doigt posé, puis la carte revient en douceur. */
 function onPointerMove(e: PointerEvent) {
-  if (!props.interactive || e.pointerType === 'touch') return
+  if (!props.interactive) return
   const rect = root.value!.getBoundingClientRect()
-  const px = (e.clientX - rect.left) / rect.width
-  const py = (e.clientY - rect.top) / rect.height
+  const px = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+  const py = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
   tilt.value = { rx: (0.5 - py) * 12, ry: (px - 0.5) * 16, mx: px * 100, my: py * 100, active: true }
 }
 
 function onPointerLeave() {
   tilt.value = { rx: 0, ry: 0, mx: 50, my: 50, active: false }
+}
+
+function onPointerUp(e: PointerEvent) {
+  if (e.pointerType !== 'mouse') onPointerLeave()
 }
 
 const rootStyle = computed(() => ({
@@ -97,8 +102,11 @@ defineExpose({ inner })
     class="card"
     :class="[`rarity-${card.rarity}`, { interactive, active: tilt.active }]"
     :style="rootStyle"
+    @pointerdown="onPointerMove"
     @pointermove="onPointerMove"
     @pointerleave="onPointerLeave"
+    @pointerup="onPointerUp"
+    @pointercancel="onPointerLeave"
   >
     <div class="tilt">
       <div ref="inner" class="inner" :style="{ transform: `scale(${scale})` }">

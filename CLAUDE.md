@@ -54,6 +54,11 @@ Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
 - Design sobre et classique : utiliser les tokens CSS de `styles/tokens.css` et les classes de
   `styles/base.css` (`.btn`, `.input`, `.field`, `.segmented`…) ; pas de framework CSS.
   Titres en Cormorant Garamond (serif), interface en Inter, un seul accent doré.
+- **Mobile obligatoire** : tout doit fonctionner au doigt sur téléphone. Point de rupture unique
+  `max-width: 860px` (`MOBILE_QUERY` dans `composables/useMediaQuery.ts`) ; adaptations tactiles
+  via `@media (pointer: coarse)` (pas de survol, cibles ≥ 36 px, champs en 16 px contre le zoom iOS).
+  Sur mobile : barre d'onglets en bas, éditeur plein écran avec panneaux en onglets, dialogues en
+  feuille basse. Gestes de l'éditeur en Pointer Events (glisser, pincer à deux doigts).
 - Formatage : Prettier (sans point-virgule, guillemets simples, 100 colonnes).
 
 ## Hors périmètre actuel

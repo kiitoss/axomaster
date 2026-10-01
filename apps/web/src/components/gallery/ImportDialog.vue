@@ -93,7 +93,8 @@ function formatDate(iso: string) {
     >
       <FileJson />
       <span v-if="fileName" class="file">{{ fileName }}</span>
-      <span v-else>Déposez un fichier <code>.json</code> ici<br /><span class="muted">ou cliquez pour parcourir</span></span>
+      <span v-else class="drop-desktop">Déposez un fichier <code>.json</code> ici<br /><span class="muted">ou cliquez pour parcourir</span></span>
+      <span v-if="!fileName" class="drop-touch">Choisir le fichier <code>.json</code> reçu</span>
       <input type="file" accept=".json,application/json" class="visually-hidden" @change="onPick" />
     </label>
 
@@ -163,6 +164,19 @@ function formatDate(iso: string) {
 
 .file {
   font-weight: 500;
+}
+
+.drop-touch {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .drop-desktop {
+    display: none;
+  }
+  .drop-touch {
+    display: inline;
+  }
 }
 
 code {

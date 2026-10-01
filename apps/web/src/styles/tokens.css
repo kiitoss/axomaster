@@ -35,4 +35,12 @@
   --space-7: 48px;
 
   --header-h: 64px;
+  --tabbar-h: 0px;
+}
+
+@media (max-width: 860px) {
+  :root {
+    --header-h: 56px;
+    --tabbar-h: calc(58px + env(safe-area-inset-bottom));
+  }
 }

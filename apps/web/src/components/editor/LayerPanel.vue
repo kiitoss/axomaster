@@ -224,6 +224,24 @@ ul {
   opacity: 1;
 }
 
+/* Pas de survol au doigt : outils toujours visibles, lignes plus hautes. */
+@media (pointer: coarse) {
+  .tools {
+    opacity: 1;
+  }
+
+  .item {
+    height: 46px;
+  }
+}
+
+@media (max-width: 860px) {
+  .panel {
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+}
+
 .tools .btn {
   color: var(--ink-3);
 }

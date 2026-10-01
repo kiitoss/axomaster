@@ -96,16 +96,16 @@ async function loadSamples() {
         <input v-model="query" class="input" placeholder="Rechercher un nom, un poste…" />
       </label>
       <select v-model="category" class="select" aria-label="Collection">
-        <option value="">Toutes les collections</option>
+        <option value="">Collections</option>
         <option v-for="c in store.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
         <option value="__none">Sans collection</option>
       </select>
       <select v-model="rarity" class="select" aria-label="Rareté">
-        <option value="">Toutes les raretés</option>
+        <option value="">Raretés</option>
         <option v-for="r in RARITY_LIST" :key="r" :value="r">{{ RARITY_INFO[r].label }}</option>
       </select>
       <select v-model="provenance" class="select" aria-label="Provenance">
-        <option value="">Toutes provenances</option>
+        <option value="">Provenances</option>
         <option value="local">Créées ici</option>
         <option value="imported">Importées</option>
         <optgroup v-if="store.authors.length" label="Par auteur">
@@ -306,22 +306,68 @@ async function loadSamples() {
   text-align: center;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 860px) {
   .gallery {
-    padding: var(--space-5) var(--space-4);
+    padding: var(--space-5) var(--space-4) var(--space-6);
   }
+
   .intro {
     grid-template-columns: 1fr;
+    margin-bottom: var(--space-4);
   }
+
+  .intro h1 {
+    font-size: 40px;
+  }
+
   .intro-actions {
     grid-column: 1;
     grid-row: auto;
     margin-top: var(--space-4);
-    flex-wrap: wrap;
   }
+
+  .intro-actions .btn {
+    flex: 1;
+    padding: 0 var(--space-2);
+  }
+
+  /* La création passe par la barre d'onglets. */
+  .intro-actions .btn-primary {
+    display: none;
+  }
+
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: var(--space-5);
+  }
+
+  .search {
+    grid-column: 1 / -1;
+  }
+
+  .toolbar .select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .toolbar .btn-ghost {
+    grid-column: 1 / -1;
+  }
+
   .grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-4);
+    gap: var(--space-5) var(--space-3);
+  }
+
+  .samples-link {
+    margin-top: var(--space-6);
+  }
+}
+
+@media (min-width: 600px) and (max-width: 860px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 </style>

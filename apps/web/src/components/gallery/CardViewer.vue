@@ -37,6 +37,32 @@ function go(delta: number) {
   if (n) index.value = (index.value + delta + n) % n
 }
 
+// Balayage horizontal au doigt pour passer d'une carte à l'autre.
+let swipe: { x: number; y: number; id: number } | null = null
+let swiped = false
+
+function onSwipeStart(e: PointerEvent) {
+  if (e.pointerType === 'mouse') return
+  swipe = { x: e.clientX, y: e.clientY, id: e.pointerId }
+  swiped = false
+}
+
+function onSwipeEnd(e: PointerEvent) {
+  if (!swipe || e.pointerId !== swipe.id) return
+  const dx = e.clientX - swipe.x
+  const dy = e.clientY - swipe.y
+  swipe = null
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    swiped = true
+    go(dx < 0 ? 1 : -1)
+  }
+}
+
+function closeFromBackdrop() {
+  if (!swiped) emit('close')
+  swiped = false
+}
+
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
   else if (e.key === 'ArrowRight') go(1)
@@ -83,7 +109,15 @@ async function remove() {
 
 <template>
   <Teleport to="body">
-    <div class="viewer" role="dialog" aria-modal="true" @click.self="emit('close')">
+    <div
+      class="viewer"
+      role="dialog"
+      aria-modal="true"
+      @click.self="closeFromBackdrop"
+      @pointerdown="onSwipeStart"
+      @pointerup="onSwipeEnd"
+      @pointercancel="swipe = null"
+    >
       <button class="close btn btn-ghost btn-icon" type="button" aria-label="Fermer" @click="emit('close')">
         <X />
       </button>
@@ -98,7 +132,7 @@ async function remove() {
         <ChevronLeft />
       </button>
 
-      <div v-if="card" class="stage" @click.self="emit('close')">
+      <div v-if="card" class="stage" @click.self="closeFromBackdrop">
         <Transition name="swap" mode="out-in">
           <div :key="card.id" class="card-wrap">
             <CardView ref="view" :card="card" :category="category" interactive />
@@ -109,6 +143,7 @@ async function remove() {
           <p class="eyebrow">{{ category?.name ?? 'Sans collection' }}</p>
           <h2>{{ card.name || 'Sans titre' }}</h2>
           <p class="sub">{{ card.subtitle }}</p>
+          <p v-if="cards.length > 1" class="position">{{ index + 1 }} / {{ cards.length }} · balayez pour naviguer</p>
           <dl>
             <div><dt>Auteur</dt><dd>{{ card.author || '—' }}</dd></div>
             <div><dt>Provenance</dt><dd>{{ sourceLabel }}</dd></div>
@@ -285,31 +320,88 @@ dd {
   transform: translateY(-6px) scale(0.98);
 }
 
+.position {
+  display: none;
+}
+
 @media (max-width: 960px) {
+  .viewer {
+    touch-action: none;
+  }
+
   .stage {
     flex-direction: column;
     justify-content: center;
     gap: var(--space-4);
-    padding: var(--space-5) var(--space-4);
+    width: 100%;
+    padding: calc(var(--space-7) + env(safe-area-inset-top)) var(--space-4)
+      calc(var(--space-4) + env(safe-area-inset-bottom));
   }
+
   .card-wrap {
     height: auto;
-    width: min(80vw, 60vh);
+    width: min(86vw, 58dvh, 520px);
   }
+
   .meta {
-    width: min(80vw, 420px);
+    width: min(100%, 420px);
     text-align: center;
   }
+
+  .meta h2 {
+    font-size: 26px;
+  }
+
+  .sub {
+    font-size: 17px;
+  }
+
   .meta dl {
     display: none;
   }
-  .actions {
-    justify-content: center;
+
+  .position {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: 12px;
+    color: #8f877a;
   }
+
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin-top: var(--space-4);
+  }
+
+  .actions .btn {
+    flex-direction: column;
+    gap: 4px;
+    height: 56px;
+    padding: 0;
+    font-size: 11px;
+  }
+
+  .actions .btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .close {
+    top: calc(var(--space-3) + env(safe-area-inset-top));
+    right: var(--space-3);
+  }
+
   .nav {
     top: auto;
     bottom: var(--space-4);
     translate: none;
+  }
+}
+
+/* Au doigt, on balaie : les flèches deviennent inutiles. */
+@media (max-width: 960px) and (pointer: coarse) {
+  .nav {
+    display: none;
   }
 }
 </style>

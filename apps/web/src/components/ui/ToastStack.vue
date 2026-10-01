@@ -24,7 +24,8 @@ const { toasts, dismiss } = useToast()
 <style scoped>
 .toasts {
   position: fixed;
-  bottom: var(--space-5);
+  bottom: calc(var(--tabbar-h) + var(--space-5));
+  max-width: calc(100vw - 32px);
   left: 50%;
   translate: -50% 0;
   z-index: 1000;

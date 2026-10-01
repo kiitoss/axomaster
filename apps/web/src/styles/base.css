@@ -18,6 +18,8 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 h1,
@@ -305,4 +307,53 @@ input[type='checkbox'] {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* ---------- Écrans tactiles ---------- */
+
+@media (pointer: coarse) {
+  .btn {
+    height: 40px;
+  }
+
+  .btn-sm {
+    height: 36px;
+  }
+
+  .btn-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .btn-icon.btn-sm {
+    width: 36px;
+    height: 36px;
+  }
+
+  .input,
+  .select {
+    height: 42px;
+  }
+
+  .segmented button {
+    height: 36px;
+  }
+
+  input[type='color'] {
+    width: 42px;
+    height: 42px;
+  }
+
+  input[type='range'] {
+    height: 28px;
+  }
+}
+
+/* iOS zoome sur les champs dont la police fait moins de 16px. */
+@media (max-width: 860px), (pointer: coarse) {
+  .input,
+  .select,
+  .textarea {
+    font-size: 16px;
+  }
 }

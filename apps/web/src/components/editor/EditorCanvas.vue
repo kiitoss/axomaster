@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import type { Layer } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
 import { useEditor } from '@/composables/editor'
 import CardView from '@/components/card/CardView.vue'
 
 const store = useCardsStore()
-const { draft, selected } = useEditor()
+const { draft, selected, selectedLayer } = useEditor()
+const touch = window.matchMedia('(pointer: coarse)').matches
 
 const overlay = ref<HTMLElement>()
 const view = ref<InstanceType<typeof CardView>>()
@@ -28,26 +29,104 @@ function boxStyle(l: Layer) {
   }
 }
 
+// ---------- Gestes : un doigt = glisser, deux doigts = pincer ----------
+
+/** Pointeurs actuellement posés sur la carte. */
+const pointers = new Map<number, { x: number; y: number }>()
+/** Incrémenté au début d'un pincement : interrompt le glisser en cours. */
+let gesture = 0
+let pinch: { distance: number; apply: (ratio: number) => void } | null = null
+
+function distance() {
+  const [a, b] = [...pointers.values()]
+  return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0
+}
+
+function onPointerDownCapture(e: PointerEvent) {
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+  if (pointers.size === 2) startPinch()
+}
+
+function startPinch() {
+  gesture++
+  guides.v = guides.h = false
+  const layer = selectedLayer.value
+  if (layer && !layer.locked) {
+    const o = { x: layer.x, y: layer.y, w: layer.w, h: layer.h }
+    pinch = {
+      distance: distance(),
+      apply: (r) => {
+        const w = Math.max(1, o.w * r)
+        const h = Math.max(0.5, o.h * r)
+        Object.assign(layer, {
+          w: round(w),
+          h: round(h),
+          x: round(o.x + (o.w - w) / 2),
+          y: round(o.y + (o.h - h) / 2),
+        })
+      },
+    }
+  } else if (draft.value.photo.imageId) {
+    selected.value = 'photo'
+    const photo = draft.value.photo
+    const scale = photo.scale
+    pinch = {
+      distance: distance(),
+      apply: (r) => (photo.scale = Math.round(Math.min(5, Math.max(1, scale * r)) * 100) / 100),
+    }
+  }
+}
+
+function onWindowPointerMove(e: PointerEvent) {
+  if (!pointers.has(e.pointerId)) return
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+  if (pinch && pointers.size === 2 && pinch.distance > 0) pinch.apply(distance() / pinch.distance)
+}
+
+function onWindowPointerUp(e: PointerEvent) {
+  pointers.delete(e.pointerId)
+  if (pointers.size < 2) pinch = null
+}
+
+onMounted(() => {
+  window.addEventListener('pointermove', onWindowPointerMove)
+  window.addEventListener('pointerup', onWindowPointerUp)
+  window.addEventListener('pointercancel', onWindowPointerUp)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', onWindowPointerMove)
+  window.removeEventListener('pointerup', onWindowPointerUp)
+  window.removeEventListener('pointercancel', onWindowPointerUp)
+})
+
 /** Suit le pointeur et fournit le déplacement en % de la carte. */
 function track(e: PointerEvent, onMove: (dx: number, dy: number, ev: PointerEvent) => void) {
+  // Deuxième doigt : c'est un pincement, pas un nouveau glisser.
+  if (pointers.size > 1) return
+  const token = gesture
   const rect = overlay.value!.getBoundingClientRect()
   const startX = e.clientX
   const startY = e.clientY
-  const move = (ev: PointerEvent) =>
+  const move = (ev: PointerEvent) => {
+    if (ev.pointerId !== e.pointerId || token !== gesture) return
     onMove(((ev.clientX - startX) / rect.width) * 100, ((ev.clientY - startY) / rect.height) * 100, ev)
-  const up = () => {
+  }
+  const up = (ev: PointerEvent) => {
+    if (ev.pointerId !== e.pointerId) return
     window.removeEventListener('pointermove', move)
     window.removeEventListener('pointerup', up)
+    window.removeEventListener('pointercancel', up)
     guides.v = guides.h = false
   }
   window.addEventListener('pointermove', move)
   window.addEventListener('pointerup', up)
+  window.addEventListener('pointercancel', up)
 }
 
 const SNAP = 1.2
 
 function startMove(e: PointerEvent, layer: Layer) {
-  if (e.button !== 0) return
+  if (e.button !== 0 || pointers.size > 1) return
   selected.value = layer.id
   if (layer.locked) return
   const origin = { x: layer.x, y: layer.y }
@@ -107,7 +186,7 @@ function photoRect() {
 
 /** Clic hors calque : sélectionne la photo (et permet de la recadrer) ou la carte. */
 function onBackgroundDown(e: PointerEvent) {
-  if (e.button !== 0) return
+  if (e.button !== 0 || pointers.size > 1) return
   const rect = photoRect()
   const inPhoto =
     rect && e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom
@@ -140,41 +219,49 @@ function onWheel(e: WheelEvent) {
 
 <template>
   <div class="stage" @pointerdown.self="selected = 'card'">
-    <div class="canvas">
-      <CardView ref="view" :card="draft" :category="category" />
-      <div
-        ref="overlay"
-        class="overlay"
-        :class="{ 'photo-mode': selected === 'photo' && draft.photo.imageId }"
-        @pointerdown="onBackgroundDown"
-        @wheel="onWheel"
-      >
+    <div class="fit" @pointerdown.self="selected = 'card'">
+      <div class="canvas">
+        <CardView ref="view" :card="draft" :category="category" />
         <div
-          v-for="layer in draft.layers"
-          v-show="layer.visible"
-          :key="layer.id"
-          class="box"
-          :class="{ selected: layer.id === selected, locked: layer.locked }"
-          :style="boxStyle(layer)"
-          @pointerdown.stop="startMove($event, layer)"
+          ref="overlay"
+          class="overlay"
+          :class="{ 'photo-mode': selected === 'photo' && draft.photo.imageId }"
+          @pointerdown.capture="onPointerDownCapture"
+          @pointerdown="onBackgroundDown"
+          @wheel="onWheel"
         >
-          <template v-if="layer.id === selected && !layer.locked">
-            <span
-              v-for="h in HANDLES"
-              :key="h"
-              class="handle"
-              :class="h"
-              @pointerdown.stop="startResize($event, layer, h)"
-            />
-            <span class="rotate" title="Rotation (Maj : par 15°)" @pointerdown.stop="startRotate($event, layer)" />
-          </template>
+          <div
+            v-for="layer in draft.layers"
+            v-show="layer.visible"
+            :key="layer.id"
+            class="box"
+            :class="{ selected: layer.id === selected, locked: layer.locked }"
+            :style="boxStyle(layer)"
+            @pointerdown.stop="startMove($event, layer)"
+          >
+            <template v-if="layer.id === selected && !layer.locked">
+              <span
+                v-for="h in HANDLES"
+                :key="h"
+                class="handle"
+                :class="h"
+                @pointerdown.stop="startResize($event, layer, h)"
+              />
+              <span class="rotate" title="Rotation (Maj : par 15°)" @pointerdown.stop="startRotate($event, layer)" />
+            </template>
+          </div>
+          <div v-show="guides.v" class="guide vertical" />
+          <div v-show="guides.h" class="guide horizontal" />
         </div>
-        <div v-show="guides.v" class="guide vertical" />
-        <div v-show="guides.h" class="guide horizontal" />
       </div>
     </div>
     <p class="hint">
-      <template v-if="selected === 'photo'">Glissez pour recadrer la photo · molette pour zoomer</template>
+      <template v-if="touch">
+        <template v-if="selected === 'photo'">Glissez pour recadrer · pincez pour zoomer</template>
+        <template v-else-if="selectedLayer">Glissez pour déplacer · pincez pour redimensionner</template>
+        <template v-else>Touchez la photo ou un calque pour le modifier</template>
+      </template>
+      <template v-else-if="selected === 'photo'">Glissez pour recadrer la photo · molette pour zoomer</template>
       <template v-else>Maj : garder les proportions · Alt : désactiver le magnétisme · Suppr : effacer</template>
     </p>
   </div>
@@ -186,20 +273,29 @@ function onWheel(e: WheelEvent) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   height: 100%;
-  padding: var(--space-6);
+  padding: var(--space-6) var(--space-6) var(--space-4);
   background:
     radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0) 0 0 / 22px 22px,
     var(--paper-2);
   overflow: hidden;
 }
 
+/* Zone disponible : la carte s'y inscrit au plus grand en gardant ses proportions. */
+.fit {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+
 .canvas {
   position: relative;
-  height: min(calc(100vh - var(--header-h) - 140px), 880px);
+  width: min(100cqw, 100cqh * 630 / 880, 630px);
   aspect-ratio: 630 / 880;
-  max-width: 100%;
 }
 
 .overlay {
@@ -298,7 +394,48 @@ function onWheel(e: WheelEvent) {
 }
 
 .hint {
+  flex: none;
   font-size: 12px;
   color: var(--ink-3);
+  text-align: center;
+}
+
+/* Au doigt : poignées d'angle plus grandes, poignées latérales masquées. */
+@media (pointer: coarse) {
+  .handle {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+    border-radius: 50%;
+  }
+
+  .handle.n,
+  .handle.s,
+  .handle.e,
+  .handle.w {
+    display: none;
+  }
+
+  .rotate {
+    top: -44px;
+    width: 24px;
+    height: 24px;
+    border-width: 2px;
+  }
+
+  .rotate::after {
+    height: 20px;
+  }
+}
+
+@media (max-width: 860px) {
+  .stage {
+    padding: var(--space-4) var(--space-4) var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .hint {
+    font-size: 11px;
+  }
 }
 </style>

@@ -74,6 +74,37 @@ function onBackdrop(e: MouseEvent) {
   }
 }
 
+/* Mobile : feuille ancrée en bas de l'écran. */
+@media (max-width: 860px) {
+  .dialog {
+    width: 100% !important;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: auto 0 0;
+    border-radius: 14px 14px 0 0;
+    border-bottom: 0;
+  }
+
+  .dialog[open] {
+    animation: sheet 0.22s ease-out;
+  }
+
+  .foot {
+    border-radius: 0;
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  }
+
+  .foot :slotted(.btn) {
+    flex: 1;
+  }
+}
+
+@keyframes sheet {
+  from {
+    transform: translateY(100%);
+  }
+}
+
 .head {
   display: flex;
   align-items: center;
