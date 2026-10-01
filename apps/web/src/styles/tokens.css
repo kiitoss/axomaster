@@ -1,0 +1,38 @@
+:root {
+  /* Couleurs */
+  --paper: #f6f2ea;
+  --paper-2: #efe9dd;
+  --paper-3: #e6dfd0;
+  --surface: #fbf9f4;
+  --ink: #1d1b18;
+  --ink-2: #4a463f;
+  --ink-3: #8a8378;
+  --line: #ddd5c6;
+  --line-strong: #c7bdaa;
+  --accent: #a8832f;
+  --accent-soft: #efe2bf;
+  --danger: #9b3b2f;
+
+  /* Typographie */
+  --font-serif: 'Cormorant Garamond', 'Garamond', 'Times New Roman', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Formes */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-sm: 0 1px 2px rgb(29 27 24 / 0.06);
+  --shadow: 0 2px 6px rgb(29 27 24 / 0.06), 0 10px 30px rgb(29 27 24 / 0.08);
+  --shadow-lg: 0 12px 50px rgb(29 27 24 / 0.22);
+
+  /* Espacements */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --header-h: 64px;
+}
