@@ -7,6 +7,7 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'gallery', component: GalleryView },
     { path: '/editor/:id?', name: 'editor', component: () => import('@/views/EditorView.vue') },
+    { path: '/boosters', name: 'boosters', component: () => import('@/views/BoosterView.vue') },
     {
       path: '/collections',
       name: 'collections',

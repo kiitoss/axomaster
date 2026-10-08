@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
-import { LayoutGrid, Library, PenLine, SquarePlus } from 'lucide-vue-next'
+import { Gift, LayoutGrid, Library, PenLine, SquarePlus } from 'lucide-vue-next'
 import { useCardsStore } from '@/stores/cards'
 import ToastStack from '@/components/ui/ToastStack.vue'
 
@@ -23,6 +23,7 @@ const inEditor = computed(() => route.name === 'editor')
       <nav class="nav">
         <RouterLink to="/" class="nav-link" exact-active-class="active">Galerie</RouterLink>
         <RouterLink to="/editor" class="nav-link" active-class="active">Créer</RouterLink>
+        <RouterLink to="/boosters" class="nav-link" active-class="active">Boosters</RouterLink>
         <RouterLink to="/collections" class="nav-link" active-class="active">Collections</RouterLink>
       </nav>
 
@@ -39,6 +40,7 @@ const inEditor = computed(() => route.name === 'editor')
     <nav class="tabbar" aria-label="Navigation principale">
       <RouterLink to="/" class="tab" exact-active-class="active"><LayoutGrid /> Galerie</RouterLink>
       <RouterLink to="/editor" class="tab create" active-class="active"><SquarePlus /> Créer</RouterLink>
+      <RouterLink to="/boosters" class="tab" active-class="active"><Gift /> Boosters</RouterLink>
       <RouterLink to="/collections" class="tab" active-class="active"><Library /> Collections</RouterLink>
     </nav>
 
@@ -198,7 +200,7 @@ const inEditor = computed(() => route.name === 'editor')
     bottom: 0;
     z-index: 50;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     height: var(--tabbar-h);
     padding-bottom: env(safe-area-inset-bottom);
     background: rgb(251 249 244 / 0.96);
