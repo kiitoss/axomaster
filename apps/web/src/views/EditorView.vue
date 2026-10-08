@@ -10,6 +10,7 @@ import { useToast } from '@/composables/useToast'
 import { MOBILE_QUERY, useMediaQuery } from '@/composables/useMediaQuery'
 import { clone } from '@/lib/clone'
 import { exportCardPng } from '@/lib/exportPng'
+import { errorMessage } from '@/api/client'
 import EditorCanvas from '@/components/editor/EditorCanvas.vue'
 import LayerPanel from '@/components/editor/LayerPanel.vue'
 import PropertiesPanel from '@/components/editor/PropertiesPanel.vue'
@@ -43,7 +44,7 @@ function load(id: string | undefined) {
   const existing = id ? store.getCard(id) : undefined
   if (id && !existing) {
     toast.error('Cette carte n’existe pas (ou plus).')
-    router.replace('/')
+    router.replace('/admin')
     return
   }
   isNew.value = !existing
@@ -65,18 +66,28 @@ watch(
 
 const dirty = computed(() => JSON.stringify(draft.value) !== savedJson.value)
 
-function save() {
-  // Le nom a pu être saisi dans l'en-tête après l'ouverture de l'éditeur.
-  if (isNew.value) draft.value.author = store.authorName
-  const saved = store.saveCard(draft.value)
-  draft.value.updatedAt = saved.updatedAt
-  savedJson.value = JSON.stringify(draft.value)
-  history.reset()
-  store.collectGarbage()
-  toast.show('Carte enregistrée')
-  if (isNew.value) {
-    isNew.value = false
-    router.replace(`/editor/${saved.id}`)
+const saving = ref(false)
+
+async function save() {
+  if (saving.value) return
+  saving.value = true
+  try {
+    if (isNew.value) draft.value.author = store.authorName
+    const snapshot = JSON.stringify(draft.value)
+    const saved = await store.saveCard(draft.value)
+    draft.value.updatedAt = saved.updatedAt
+    // Les modifications faites pendant l'envoi restent « non enregistrées ».
+    savedJson.value = JSON.stringify({ ...JSON.parse(snapshot), updatedAt: saved.updatedAt })
+    history.reset()
+    toast.show('Carte enregistrée')
+    if (isNew.value) {
+      isNew.value = false
+      router.replace(`/admin/editor/${saved.id}`)
+    }
+  } catch (err) {
+    toast.error(`Enregistrement impossible : ${errorMessage(err)}`)
+  } finally {
+    saving.value = false
   }
 }
 
@@ -93,7 +104,8 @@ async function exportPng() {
 }
 
 onBeforeRouteLeave(() => {
-  if (dirty.value) return confirm('Des modifications ne sont pas enregistrées. Quitter quand même ?')
+  if (dirty.value)
+    return confirm('Des modifications ne sont pas enregistrées. Quitter quand même ?')
 })
 
 function onBeforeUnload(e: BeforeUnloadEvent) {
@@ -154,7 +166,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('beforeunload', onBeforeUnload)
-  // Nettoie les images envoyées mais jamais enregistrées.
+  // Nettoie les images envoyées mais jamais enregistrées (après un délai de grâce côté serveur).
   store.collectGarbage()
 })
 </script>
@@ -162,7 +174,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="editor">
     <div class="bar">
-      <RouterLink to="/" class="btn btn-ghost btn-sm back" aria-label="Retour à la galerie">
+      <RouterLink to="/admin" class="btn btn-ghost btn-sm back" aria-label="Retour à la galerie">
         <ArrowLeft /> <span class="text">Galerie</span>
       </RouterLink>
       <div class="title">
@@ -173,16 +185,41 @@ onBeforeUnmount(() => {
         <span class="status muted" :class="{ dirty }">
           {{ dirty ? 'Non enregistrée' : 'Enregistrée' }}
         </span>
-        <button class="btn btn-ghost btn-icon" type="button" title="Annuler (Ctrl+Z)" aria-label="Annuler" :disabled="!history.canUndo.value" @click="history.undo()">
+        <button
+          class="btn btn-ghost btn-icon"
+          type="button"
+          title="Annuler (Ctrl+Z)"
+          aria-label="Annuler"
+          :disabled="!history.canUndo.value"
+          @click="history.undo()"
+        >
           <Undo2 />
         </button>
-        <button class="btn btn-ghost btn-icon" type="button" title="Rétablir (Ctrl+Y)" aria-label="Rétablir" :disabled="!history.canRedo.value" @click="history.redo()">
+        <button
+          class="btn btn-ghost btn-icon"
+          type="button"
+          title="Rétablir (Ctrl+Y)"
+          aria-label="Rétablir"
+          :disabled="!history.canRedo.value"
+          @click="history.redo()"
+        >
           <Redo2 />
         </button>
-        <button class="btn btn-sm png" type="button" title="Exporter en image" aria-label="Exporter en PNG" @click="exportPng">
+        <button
+          class="btn btn-sm png"
+          type="button"
+          title="Exporter en image"
+          aria-label="Exporter en PNG"
+          @click="exportPng"
+        >
           <Image /> <span class="text">PNG</span>
         </button>
-        <button class="btn btn-primary btn-sm" type="button" :disabled="!dirty" @click="save">
+        <button
+          class="btn btn-primary btn-sm"
+          type="button"
+          :disabled="!dirty || saving"
+          @click="save"
+        >
           <Check /> Enregistrer
         </button>
       </div>
@@ -194,11 +231,23 @@ onBeforeUnmount(() => {
       <aside v-show="!isMobile || tab === 'props'" class="side right"><PropertiesPanel /></aside>
 
       <nav v-if="isMobile" class="tabs" role="tablist">
-        <button type="button" role="tab" :aria-selected="tab === 'layers'" :class="{ active: tab === 'layers' }" @click="tab = 'layers'">
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'layers'"
+          :class="{ active: tab === 'layers' }"
+          @click="tab = 'layers'"
+        >
           <Layers /> Calques
           <span v-if="draft.layers.length" class="count">{{ draft.layers.length }}</span>
         </button>
-        <button type="button" role="tab" :aria-selected="tab === 'props'" :class="{ active: tab === 'props' }" @click="tab = 'props'">
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'props'"
+          :class="{ active: tab === 'props' }"
+          @click="tab = 'props'"
+        >
           <SlidersHorizontal /> <span class="tab-label">{{ propsLabel }}</span>
         </button>
       </nav>

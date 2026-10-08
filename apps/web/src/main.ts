@@ -13,5 +13,17 @@ import './styles/base.css'
 
 import App from './App.vue'
 import { router } from './router'
+import { setUnauthorizedHandler } from './api/client'
+import { useAuthStore } from './stores/auth'
 
-createApp(App).use(createPinia()).use(router).mount('#app')
+const app = createApp(App).use(createPinia())
+
+const auth = useAuthStore()
+
+setUnauthorizedHandler(() => {
+  auth.user = null
+  router.replace({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
+})
+
+// La session doit être connue avant la première navigation (gardes du routeur).
+auth.init().then(() => app.use(router).mount('#app'))

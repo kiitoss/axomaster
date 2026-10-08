@@ -11,4 +11,8 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    // En développement, l'API tourne dans `wrangler dev` (apps/api).
+    proxy: { '/api': 'http://localhost:8787' },
+  },
 })

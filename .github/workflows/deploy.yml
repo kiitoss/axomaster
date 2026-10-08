@@ -1,7 +1,7 @@
-name: Déploiement GitHub Pages
+name: Déploiement Cloudflare
 
-# Publie le site à chaque nouveau tag (ex. `git tag v1.0.0 && git push origin v1.0.0`).
-# Lancement manuel possible depuis l'onglet Actions.
+# Publie l'application (front + API) à chaque nouveau tag (ex. `git tag v1.0.0 && git push origin v1.0.0`).
+# Lancement manuel possible depuis l'onglet Actions. Mise en place : docs/deploiement.md.
 on:
   push:
     tags: ['**']
@@ -9,16 +9,18 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: deploy
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v5
 
@@ -31,22 +33,13 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
         env:
           VITE_APP_VERSION: ${{ github.ref_name }}
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: apps/web/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # Migrations D1 d'abord : le nouveau code peut dépendre du nouveau schéma.
+      - run: pnpm --filter @axomaster/api db:migrate:remote
+      - run: pnpm --filter @axomaster/api release

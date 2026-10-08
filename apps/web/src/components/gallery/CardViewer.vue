@@ -6,9 +6,16 @@ import type { Card } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
 import { useToast } from '@/composables/useToast'
 import { exportCardPng } from '@/lib/exportPng'
+import { errorMessage } from '@/api/client'
 import CardView from '@/components/card/CardView.vue'
 
-const props = defineProps<{ cards: Card[] }>()
+const props = defineProps<{
+  cards: Card[]
+  /** Consultation seule (joueurs) : pas de modification ni de suppression. */
+  readonly?: boolean
+  /** Nombre d'exemplaires possédés, par carte. */
+  quantities?: Record<string, number>
+}>()
 const index = defineModel<number>('index', { required: true })
 const emit = defineEmits<{ close: [] }>()
 
@@ -79,13 +86,17 @@ onBeforeUnmount(() => {
 })
 
 function edit() {
-  if (card.value) router.push(`/editor/${card.value.id}`)
+  if (card.value) router.push(`/admin/editor/${card.value.id}`)
 }
 
-function duplicate() {
+async function duplicate() {
   if (!card.value) return
-  const copy = store.duplicateCard(card.value.id)
-  if (copy) router.push(`/editor/${copy.id}`)
+  try {
+    const copy = await store.duplicateCard(card.value.id)
+    if (copy) router.push(`/admin/editor/${copy.id}`)
+  } catch (err) {
+    toast.error(errorMessage(err))
+  }
 }
 
 async function exportPng() {
@@ -101,9 +112,18 @@ async function exportPng() {
 
 async function remove() {
   const c = card.value
-  if (!c || !confirm(`Supprimer définitivement « ${c.name || 'cette carte'} » ?`)) return
-  await store.removeCard(c.id)
-  toast.show('Carte supprimée')
+  if (!c) return
+  const warning =
+    store.statusOf(c.id) === 'published'
+      ? ' Elle est publiée : les joueurs qui la possèdent la perdront.'
+      : ''
+  if (!confirm(`Supprimer définitivement « ${c.name || 'cette carte'} » ?${warning}`)) return
+  try {
+    await store.removeCard(c.id)
+    toast.show('Carte supprimée')
+  } catch (err) {
+    toast.error(errorMessage(err))
+  }
 }
 </script>
 
@@ -118,7 +138,12 @@ async function remove() {
       @pointerup="onSwipeEnd"
       @pointercancel="swipe = null"
     >
-      <button class="close btn btn-ghost btn-icon" type="button" aria-label="Fermer" @click="emit('close')">
+      <button
+        class="close btn btn-ghost btn-icon"
+        type="button"
+        aria-label="Fermer"
+        @click="emit('close')"
+      >
         <X />
       </button>
 
@@ -143,17 +168,42 @@ async function remove() {
           <p class="eyebrow">{{ category?.name ?? 'Sans collection' }}</p>
           <h2>{{ card.name || 'Sans titre' }}</h2>
           <p class="sub">{{ card.subtitle }}</p>
-          <p v-if="cards.length > 1" class="position">{{ index + 1 }} / {{ cards.length }} · balayez pour naviguer</p>
+          <p v-if="cards.length > 1" class="position">
+            {{ index + 1 }} / {{ cards.length }} · balayez pour naviguer
+          </p>
           <dl>
-            <div><dt>Auteur</dt><dd>{{ card.author || '—' }}</dd></div>
-            <div><dt>Provenance</dt><dd>{{ sourceLabel }}</dd></div>
-            <div><dt>Position</dt><dd>{{ index + 1 }} / {{ cards.length }}</dd></div>
+            <div v-if="!readonly">
+              <dt>Auteur</dt>
+              <dd>{{ card.author || '—' }}</dd>
+            </div>
+            <div v-if="!readonly">
+              <dt>Provenance</dt>
+              <dd>{{ sourceLabel }}</dd>
+            </div>
+            <div v-if="!readonly">
+              <dt>Statut</dt>
+              <dd>{{ store.statusOf(card.id) === 'published' ? 'Publiée' : 'Brouillon' }}</dd>
+            </div>
+            <div v-if="quantities">
+              <dt>Exemplaires</dt>
+              <dd>{{ quantities[card.id] ?? 0 }}</dd>
+            </div>
+            <div>
+              <dt>Position</dt>
+              <dd>{{ index + 1 }} / {{ cards.length }}</dd>
+            </div>
           </dl>
           <div class="actions">
-            <button class="btn btn-sm" type="button" @click="edit"><Pencil /> Modifier</button>
-            <button class="btn btn-sm" type="button" @click="duplicate"><Copy /> Dupliquer</button>
+            <template v-if="!readonly">
+              <button class="btn btn-sm" type="button" @click="edit"><Pencil /> Modifier</button>
+              <button class="btn btn-sm" type="button" @click="duplicate">
+                <Copy /> Dupliquer
+              </button>
+            </template>
             <button class="btn btn-sm" type="button" @click="exportPng"><Image /> PNG</button>
-            <button class="btn btn-sm btn-danger" type="button" @click="remove"><Trash2 /> Supprimer</button>
+            <button v-if="!readonly" class="btn btn-sm btn-danger" type="button" @click="remove">
+              <Trash2 /> Supprimer
+            </button>
           </div>
         </aside>
       </div>

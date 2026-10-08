@@ -7,9 +7,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "pnpm --filter @axomaster/web dev",
-    "build": "pnpm -r build",
+    "dev": "pnpm --parallel --filter @axomaster/web --filter @axomaster/api dev",
+    "build": "pnpm --filter @axomaster/web build",
     "preview": "pnpm --filter @axomaster/web preview",
+    "release": "pnpm build && pnpm --filter @axomaster/api release",
+    "db:migrate": "pnpm --filter @axomaster/api db:migrate",
+    "db:seed": "pnpm --filter @axomaster/api db:seed",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "eslint .",

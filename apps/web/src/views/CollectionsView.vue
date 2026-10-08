@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Plus, Trash2 } from 'lucide-vue-next'
+import type { Category } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
+import { useToast } from '@/composables/useToast'
+import { errorMessage } from '@/api/client'
 
 const store = useCardsStore()
+const toast = useToast()
 
 const PALETTE = ['#3f5d8c', '#a8832f', '#5d7d68', '#6d4f8f', '#9b3b2f', '#4a463f']
 const name = ref('')
@@ -17,17 +21,33 @@ const counts = computed(() => {
   return map
 })
 
+async function run(action: () => Promise<unknown>) {
+  try {
+    await action()
+  } catch (err) {
+    toast.error(errorMessage(err))
+  }
+}
+
 function add() {
   if (!name.value.trim()) return
-  store.addCategory(name.value.trim(), color.value)
-  name.value = ''
-  color.value = PALETTE[store.categories.length % PALETTE.length]!
+  run(async () => {
+    await store.addCategory(name.value.trim(), color.value)
+    name.value = ''
+    color.value = PALETTE[store.categories.length % PALETTE.length]!
+  })
+}
+
+/** Enregistre une collection modifiée (à la sortie du champ). */
+function save(category: Category) {
+  run(() => store.updateCategory(category))
 }
 
 function remove(id: string, label: string) {
   const n = counts.value.get(id) ?? 0
   const detail = n ? ` ${n} carte${n > 1 ? 's' : ''} n’auront plus de collection.` : ''
-  if (confirm(`Supprimer la collection « ${label} » ?${detail}`)) store.removeCategory(id)
+  if (confirm(`Supprimer la collection « ${label} » ?${detail}`))
+    run(() => store.removeCategory(id))
 }
 </script>
 
@@ -36,18 +56,36 @@ function remove(id: string, label: string) {
     <p class="eyebrow">Organisation</p>
     <h1>Collections</h1>
     <p class="muted lead">
-      Regroupez vos cartes par thème : collaborateurs, séminaires, projets… La couleur apparaît sur le
-      bandeau de la carte.
+      Regroupez les cartes par thème : collaborateurs, séminaires, projets… La couleur apparaît sur
+      le bandeau de la carte, et chaque collection publiée a son propre booster.
     </p>
 
     <ul class="list">
       <li v-for="category in store.categories" :key="category.id" class="item">
-        <input v-model="category.color" type="color" :aria-label="`Couleur de ${category.name}`" />
-        <input v-model="category.name" class="input name" maxlength="80" :aria-label="`Nom de ${category.name}`" />
+        <input
+          v-model="category.color"
+          type="color"
+          :aria-label="`Couleur de ${category.name}`"
+          @change="save(category)"
+        />
+        <input
+          v-model="category.name"
+          class="input name"
+          maxlength="80"
+          :aria-label="`Nom de ${category.name}`"
+          @change="save(category)"
+        />
         <span class="count muted">
-          {{ counts.get(category.id) ?? 0 }} carte{{ (counts.get(category.id) ?? 0) > 1 ? 's' : '' }}
+          {{ counts.get(category.id) ?? 0 }} carte{{
+            (counts.get(category.id) ?? 0) > 1 ? 's' : ''
+          }}
         </span>
-        <button class="btn btn-ghost btn-icon" type="button" title="Supprimer" @click="remove(category.id, category.name)">
+        <button
+          class="btn btn-ghost btn-icon"
+          type="button"
+          title="Supprimer"
+          @click="remove(category.id, category.name)"
+        >
           <Trash2 />
         </button>
       </li>

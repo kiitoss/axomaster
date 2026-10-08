@@ -1,0 +1,26 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "axomaster",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-15",
+  "compatibility_flags": ["nodejs_compat"],
+  // Le Worker sert le build Vite ; seules les routes /api/* passent par Hono.
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "axomaster",
+      // Remplacer par l'identifiant renvoyé par `wrangler d1 create axomaster` (cf. docs/deploiement.md).
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+  // Images : stockées dans D1 par défaut. Pour utiliser R2 à la place (palier gratuit 10 Go,
+  // moyen de paiement requis sur le compte), créer le bucket puis décommenter :
+  // "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "axomaster-images" }]
+}

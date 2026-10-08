@@ -1,47 +1,136 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch, type Component } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
-import { Gift, LayoutGrid, Library, PenLine, SquarePlus } from 'lucide-vue-next'
-import { useCardsStore } from '@/stores/cards'
+import {
+  ArrowLeftRight,
+  BookOpen,
+  Gift,
+  LayoutGrid,
+  Library,
+  LogOut,
+  Settings,
+  Shield,
+  SquarePlus,
+  Users,
+} from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
+import { useTradesStore } from '@/stores/trades'
 import ToastStack from '@/components/ui/ToastStack.vue'
 
-const store = useCardsStore()
+const auth = useAuthStore()
+const trades = useTradesStore()
 const route = useRoute()
+
+interface NavLink {
+  to: string
+  label: string
+  icon: Component
+  exact?: boolean
+  badge?: number
+}
 
 /** Sur mobile, l'éditeur occupe tout l'écran : il a sa propre barre. */
 const inEditor = computed(() => route.name === 'editor')
+const isPublic = computed(() => !!route.meta.public)
+/** L'administrateur passe d'un espace à l'autre ; les joueurs n'ont que l'espace de jeu. */
+const adminSpace = computed(() => !!route.meta.admin)
+
+const links = computed<NavLink[]>(() =>
+  adminSpace.value
+    ? [
+        { to: '/admin', label: 'Galerie', icon: LayoutGrid, exact: true },
+        { to: '/admin/editor', label: 'Créer', icon: SquarePlus },
+        { to: '/admin/collections', label: 'Collections', icon: Library },
+        { to: '/admin/joueurs', label: 'Joueurs', icon: Users },
+        { to: '/admin/reglages', label: 'Réglages', icon: Settings },
+      ]
+    : [
+        { to: '/', label: 'Catalogue', icon: BookOpen, exact: true },
+        { to: '/boosters', label: 'Boosters', icon: Gift },
+        { to: '/echanges', label: 'Échanges', icon: ArrowLeftRight, badge: trades.incoming.length },
+      ],
+)
+
+// Pastille des échanges reçus : rafraîchie à chaque navigation.
+watch(
+  () => route.fullPath,
+  () => {
+    if (auth.user && !isPublic.value) trades.load().catch(() => {})
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
-  <div class="app" :class="{ 'in-editor': inEditor }">
-    <header class="topbar">
-      <RouterLink to="/" class="logo">
+  <div class="app" :class="{ 'in-editor': inEditor, public: isPublic }">
+    <header v-if="!isPublic" class="topbar">
+      <RouterLink :to="adminSpace ? '/admin' : '/'" class="logo">
         <span class="logo-mark" aria-hidden="true" />
         <span class="logo-text">AxoMaster</span>
+        <span v-if="adminSpace" class="logo-badge">Admin</span>
       </RouterLink>
 
       <nav class="nav">
-        <RouterLink to="/" class="nav-link" exact-active-class="active">Galerie</RouterLink>
-        <RouterLink to="/editor" class="nav-link" active-class="active">Créer</RouterLink>
-        <RouterLink to="/boosters" class="nav-link" active-class="active">Boosters</RouterLink>
-        <RouterLink to="/collections" class="nav-link" active-class="active">Collections</RouterLink>
+        <RouterLink
+          v-for="link in links"
+          :key="link.to"
+          :to="link.to"
+          class="nav-link"
+          :active-class="link.exact ? '' : 'active'"
+          :exact-active-class="'active'"
+        >
+          {{ link.label }}
+          <span v-if="link.badge" class="badge">{{ link.badge }}</span>
+        </RouterLink>
       </nav>
 
-      <label class="signature" title="Votre nom apparaît sur les cartes créées et les paquets exportés">
-        <PenLine />
-        <input v-model.trim="store.author" class="signature-input" placeholder="Votre nom" maxlength="80" />
-      </label>
+      <div class="account">
+        <RouterLink
+          v-if="auth.isAdmin"
+          :to="adminSpace ? '/' : '/admin'"
+          class="btn btn-ghost btn-sm space-switch"
+          :title="adminSpace ? 'Revenir à l’espace de jeu' : 'Ouvrir l’administration'"
+        >
+          <Shield v-if="!adminSpace" /><BookOpen v-else />
+          <span class="text">{{ adminSpace ? 'Jouer' : 'Administration' }}</span>
+        </RouterLink>
+        <span class="user-name" :title="auth.user?.username">{{ auth.user?.displayName }}</span>
+        <button
+          class="btn btn-ghost btn-icon btn-sm"
+          type="button"
+          title="Se déconnecter"
+          aria-label="Se déconnecter"
+          @click="auth.logout()"
+        >
+          <LogOut />
+        </button>
+      </div>
     </header>
 
     <main class="main">
       <RouterView />
     </main>
 
-    <nav class="tabbar" aria-label="Navigation principale">
-      <RouterLink to="/" class="tab" exact-active-class="active"><LayoutGrid /> Galerie</RouterLink>
-      <RouterLink to="/editor" class="tab create" active-class="active"><SquarePlus /> Créer</RouterLink>
-      <RouterLink to="/boosters" class="tab" active-class="active"><Gift /> Boosters</RouterLink>
-      <RouterLink to="/collections" class="tab" active-class="active"><Library /> Collections</RouterLink>
+    <nav
+      v-if="!isPublic"
+      class="tabbar"
+      aria-label="Navigation principale"
+      :style="{ gridTemplateColumns: `repeat(${links.length}, 1fr)` }"
+    >
+      <RouterLink
+        v-for="link in links"
+        :key="link.to"
+        :to="link.to"
+        class="tab"
+        :active-class="link.exact ? '' : 'active'"
+        :exact-active-class="'active'"
+      >
+        <span class="tab-icon">
+          <component :is="link.icon" />
+          <span v-if="link.badge" class="badge">{{ link.badge }}</span>
+        </span>
+        {{ link.label }}
+      </RouterLink>
     </nav>
 
     <ToastStack />
@@ -130,38 +219,58 @@ const inEditor = computed(() => route.name === 'editor')
   background: var(--accent);
 }
 
-.signature {
+.logo-badge {
+  padding: 2px 6px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.account {
   justify-self: end;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  color: var(--ink-3);
+  min-width: 0;
 }
 
-.signature svg {
-  flex: none;
-  width: 14px;
-  height: 14px;
-}
-
-.signature-input {
-  width: 160px;
-  border: 0;
-  border-bottom: 1px solid transparent;
-  background: transparent;
+.user-name {
+  overflow: hidden;
+  max-width: 180px;
   font: italic 500 18px var(--font-serif);
-  color: var(--ink);
-  padding: 2px 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.signature-input:hover,
-.signature-input:focus {
-  outline: none;
-  border-bottom-color: var(--line-strong);
+.space-switch {
+  text-decoration: none;
 }
 
 .main {
   min-height: calc(100dvh - var(--header-h));
+}
+
+.public .main {
+  min-height: 100dvh;
 }
 
 .tabbar {
@@ -183,14 +292,27 @@ const inEditor = computed(() => route.name === 'editor')
     display: none;
   }
 
-  .signature-input {
-    width: min(150px, 38vw);
+  .account {
+    gap: var(--space-1);
+  }
+
+  .user-name {
+    max-width: 30vw;
     font-size: 17px;
+  }
+
+  .space-switch .text {
+    display: none;
   }
 
   .main {
     min-height: calc(100dvh - var(--header-h) - var(--tabbar-h));
     padding-bottom: var(--tabbar-h);
+  }
+
+  .public .main {
+    min-height: 100dvh;
+    padding-bottom: 0;
   }
 
   .tabbar {
@@ -200,7 +322,6 @@ const inEditor = computed(() => route.name === 'editor')
     bottom: 0;
     z-index: 50;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
     height: var(--tabbar-h);
     padding-bottom: env(safe-area-inset-bottom);
     background: rgb(251 249 244 / 0.96);
@@ -233,6 +354,18 @@ const inEditor = computed(() => route.name === 'editor')
 
   .tab.active svg {
     color: var(--accent);
+  }
+
+  .tab-icon {
+    position: relative;
+    display: grid;
+  }
+
+  .tab-icon .badge {
+    position: absolute;
+    top: -4px;
+    right: -12px;
+    margin: 0;
   }
 
   /* Éditeur plein écran : ni en-tête ni barre d'onglets. */

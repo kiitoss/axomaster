@@ -1,43 +1,71 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { LayoutGrid, Plus, RotateCcw, X } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
+import { BookOpen, Gift, RotateCcw, X } from 'lucide-vue-next'
 import {
-  BOOSTER_SIZE,
-  drawBooster,
   RARITY_INFO,
   RARITY_LIST,
   RARITY_WEIGHTS,
+  type BoosterOffer,
   type Card,
 } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
+import { useCollectionStore } from '@/stores/collection'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { errorMessage } from '@/api/client'
 import BoosterPack from '@/components/booster/BoosterPack.vue'
 import RevealCard from '@/components/booster/RevealCard.vue'
 import CardView from '@/components/card/CardView.vue'
 import CardViewer from '@/components/gallery/CardViewer.vue'
 
 const store = useCardsStore()
-const router = useRouter()
+const collection = useCollectionStore()
+const auth = useAuthStore()
+const toast = useToast()
 
-interface Booster {
-  id: string
-  title: string
-  color: string
-  pool: Card[]
-}
+const loading = ref(true)
 
-/** Un booster « toutes les cartes », puis un par collection non vide. */
-const boosters = computed<Booster[]>(() => {
-  if (!store.cards.length) return []
-  const list: Booster[] = [
-    { id: '__all', title: 'Toutes les cartes', color: '#a8832f', pool: store.cards },
-  ]
-  for (const category of store.categories) {
-    const pool = store.cards.filter((c) => c.categoryId === category.id)
-    if (pool.length)
-      list.push({ id: category.id, title: category.name, color: category.color, pool })
+onMounted(async () => {
+  try {
+    await Promise.all([collection.loadBoosters(), store.ensureCategories()])
+  } catch (err) {
+    toast.error(errorMessage(err))
+  } finally {
+    loading.value = false
   }
-  return list
+})
+
+const offers = computed(() => collection.boosters?.offers ?? [])
+const stock = computed(() => collection.boosters?.stock ?? null)
+const size = computed(() => collection.boosters?.size ?? 5)
+const available = computed(() => stock.value?.total ?? 0)
+
+// Compte à rebours jusqu'au prochain booster.
+const now = ref(Date.now())
+let refreshing = false
+const ticker = setInterval(() => {
+  now.value = Date.now()
+  const next = stock.value?.nextAt
+  // Recharge atteinte : on relit le stock auprès du serveur.
+  if (next && new Date(next).getTime() <= now.value && !refreshing) {
+    refreshing = true
+    collection
+      .loadBoosters()
+      .catch(() => {})
+      .finally(() => (refreshing = false))
+  }
+}, 1000)
+
+const countdown = computed(() => {
+  const next = stock.value?.nextAt
+  if (!next) return ''
+  const ms = Math.max(0, new Date(next).getTime() - now.value)
+  const h = Math.floor(ms / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  const sec = Math.floor((ms % 60_000) / 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return h ? `${h} h ${pad(m)}` : `${pad(m)} min ${pad(sec)}`
 })
 
 const odds = computed(() => {
@@ -58,12 +86,10 @@ function plural(n: number, word: string) {
 type Phase = 'choose' | 'sealed' | 'opening' | 'reveal' | 'summary'
 
 const phase = ref<Phase>('choose')
-const booster = ref<Booster | null>(null)
-/** Identifiants tirés ; on relit les cartes dans le store pour suivre modifications et suppressions. */
-const drawnIds = ref<string[]>([])
-const drawn = computed(() =>
-  drawnIds.value.map((id) => store.getCard(id)).filter((c): c is Card => !!c),
-)
+const booster = ref<BoosterOffer | null>(null)
+const drawn = ref<Card[]>([])
+const newIds = ref(new Set<string>())
+const busy = ref(false)
 const current = ref(0)
 const revealed = ref<boolean[]>([])
 const charging = ref(false)
@@ -87,23 +113,39 @@ function clearTimers() {
   timers.clear()
 }
 
-function open(b: Booster) {
-  clearTimers()
-  booster.value = b
-  drawnIds.value = drawBooster(b.pool).map((c) => c.id)
-  current.value = 0
-  revealed.value = drawnIds.value.map(() => false)
-  charging.value = false
-  flash.value = null
-  run.value++
-  phase.value = 'sealed'
+/** Le tirage a lieu côté serveur ; l'animation démarre une fois les cartes reçues. */
+async function open(b: BoosterOffer) {
+  if (busy.value) return
+  if (!available.value) {
+    toast.show(
+      countdown.value ? `Prochain booster dans ${countdown.value}` : 'Aucun booster disponible',
+    )
+    return
+  }
+  busy.value = true
+  try {
+    const result = await collection.openBooster(b.pool)
+    clearTimers()
+    booster.value = b
+    drawn.value = result.cards
+    newIds.value = new Set(result.newCardIds)
+    current.value = 0
+    revealed.value = result.cards.map(() => false)
+    charging.value = false
+    flash.value = null
+    viewerIndex.value = null
+    run.value++
+    phase.value = 'sealed'
+  } catch (err) {
+    toast.error(errorMessage(err))
+    collection.loadBoosters().catch(() => {})
+  } finally {
+    busy.value = false
+  }
 }
 
 function reopen() {
-  // Le pool peut avoir changé (carte supprimée depuis le récapitulatif).
-  const fresh = boosters.value.find((b) => b.id === booster.value?.id)
-  if (fresh) open(fresh)
-  else close()
+  if (booster.value) open(booster.value)
 }
 
 function close() {
@@ -157,6 +199,13 @@ function revealAll() {
   phase.value = 'summary'
 }
 
+/** Une carte n'est « nouvelle » qu'à sa première occurrence dans le booster. */
+function isNew(index: number) {
+  const card = drawn.value[index]
+  if (!card || !newIds.value.has(card.id)) return false
+  return drawn.value.findIndex((c) => c.id === card.id) === index
+}
+
 /** Pile : la carte courante devant, les suivantes légèrement en retrait, les vues écartées. */
 function slotStyle(i: number) {
   const d = i - current.value
@@ -202,6 +251,7 @@ window.addEventListener('keydown', onKey)
 
 onBeforeUnmount(() => {
   clearTimers()
+  clearInterval(ticker)
   window.removeEventListener('keydown', onKey)
   document.body.style.overflow = ''
 })
@@ -209,7 +259,10 @@ onBeforeUnmount(() => {
 const hint = computed(() => {
   if (phase.value === 'sealed') return 'Glissez sur le paquet pour le déchirer, ou touchez-le'
   if (phase.value !== 'reveal') return ''
-  return revealed.value[current.value] ? 'Touchez pour la carte suivante' : 'Touchez pour retourner'
+  if (!revealed.value[current.value]) return 'Touchez pour retourner'
+  return isNew(current.value)
+    ? 'Nouvelle carte ! Touchez pour continuer'
+    : 'Touchez pour la carte suivante'
 })
 </script>
 
@@ -219,23 +272,43 @@ const hint = computed(() => {
       <p class="eyebrow">Boosters</p>
       <h1>Ouvrir un booster</h1>
       <p class="muted">
-        Chaque booster contient {{ BOOSTER_SIZE }} cartes tirées de votre galerie, dont au moins une
-        rare ou mieux.
+        Chaque booster contient {{ size }} cartes tirées parmi les cartes en jeu, dont au moins une
+        rare ou mieux. Les cartes obtenues rejoignent votre catalogue.
       </p>
     </section>
 
-    <template v-if="boosters.length">
+    <section v-if="stock" class="stock" :class="{ out: !available }">
+      <Gift />
+      <div>
+        <p class="stock-count">
+          {{ available ? plural(available, 'booster') + ' à ouvrir' : 'Aucun booster à ouvrir' }}
+        </p>
+        <p class="muted">
+          <template v-if="stock.bonus">
+            Dont {{ plural(stock.bonus, 'booster') }} offert{{ stock.bonus > 1 ? 's' : '' }}.
+          </template>
+          <template v-if="countdown">Prochain booster dans {{ countdown }}.</template>
+          <template v-else>Réserve pleine : ouvrez-en un pour relancer le compteur.</template>
+        </p>
+      </div>
+    </section>
+
+    <p v-if="loading" class="muted">Chargement…</p>
+
+    <template v-else-if="offers.length">
       <section class="shelf">
         <button
-          v-for="b in boosters"
-          :key="b.id"
+          v-for="b in offers"
+          :key="b.pool"
           type="button"
           class="shelf-item"
+          :class="{ locked: !available }"
+          :disabled="busy"
           :aria-label="`Ouvrir le booster ${b.title}`"
           @click="open(b)"
         >
-          <BoosterPack :title="b.title" :color="b.color" :caption="`${BOOSTER_SIZE} cartes`" />
-          <span class="shelf-count">{{ plural(b.pool.length, 'carte') }} en jeu</span>
+          <BoosterPack :title="b.title" :color="b.color" :caption="`${size} cartes`" />
+          <span class="shelf-count">{{ plural(b.cardCount, 'carte') }} en jeu</span>
         </button>
       </section>
 
@@ -256,15 +329,13 @@ const hint = computed(() => {
     </template>
 
     <section v-else class="empty">
-      <h2>Aucune carte à tirer</h2>
-      <p class="muted">
-        Les boosters puisent dans votre galerie : créez ou importez d’abord des cartes.
-      </p>
+      <h2>Aucune carte en jeu</h2>
+      <p class="muted">Les boosters seront disponibles dès que des cartes auront été publiées.</p>
       <div class="row">
-        <button class="btn btn-primary" type="button" @click="router.push('/editor')">
-          <Plus /> Créer une carte
-        </button>
-        <button class="btn" type="button" @click="router.push('/')"><LayoutGrid /> Galerie</button>
+        <RouterLink v-if="auth.isAdmin" class="btn btn-primary" to="/admin">
+          Publier des cartes
+        </RouterLink>
+        <RouterLink class="btn" to="/"><BookOpen /> Catalogue</RouterLink>
       </div>
     </section>
 
@@ -295,7 +366,7 @@ const hint = computed(() => {
               <BoosterPack
                 :title="booster.title"
                 :color="booster.color"
-                :caption="`${BOOSTER_SIZE} cartes`"
+                :caption="`${size} cartes`"
                 tearable
                 @torn="onTorn"
               />
@@ -335,11 +406,18 @@ const hint = computed(() => {
                 @click="viewerIndex = i"
               >
                 <CardView :card="card" :category="store.getCategory(card.categoryId)" interactive />
+                <span v-if="isNew(i)" class="new-pill">Nouvelle</span>
               </button>
             </div>
             <div class="summary-actions">
-              <button class="btn btn-primary" type="button" @click="reopen">
-                <RotateCcw /> Ouvrir un autre
+              <button
+                v-if="available"
+                class="btn btn-primary"
+                type="button"
+                :disabled="busy"
+                @click="reopen"
+              >
+                <RotateCcw /> Ouvrir un autre ({{ available }})
               </button>
               <button class="btn on-dark" type="button" @click="close">Changer de paquet</button>
             </div>
@@ -369,6 +447,7 @@ const hint = computed(() => {
       v-if="viewerIndex !== null && drawn.length"
       v-model:index="viewerIndex"
       :cards="drawn"
+      readonly
       @close="viewerIndex = null"
     />
   </div>
@@ -436,9 +515,61 @@ const hint = computed(() => {
   transform: translateY(-2px) scale(0.98);
 }
 
+.shelf-item:disabled {
+  cursor: progress;
+}
+
+.shelf-item.locked :deep(.pack) {
+  filter: grayscale(0.7) brightness(0.92);
+}
+
 .shelf-count {
   font-size: 12px;
   letter-spacing: 0.04em;
+}
+
+.stock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+}
+
+.stock.out {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.stock > svg {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+}
+
+.stock-count {
+  font: 500 24px var(--font-serif);
+}
+
+.new-pill {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #1a1815;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.3);
 }
 
 .odds {
@@ -725,6 +856,7 @@ const hint = computed(() => {
 
 /* Éventail : chaque carte pivote autour d'un point bas commun. */
 .summary-card {
+  position: relative;
   width: clamp(150px, 15vw, 220px);
   margin: 0 -14px;
   padding: 0;

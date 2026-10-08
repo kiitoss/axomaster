@@ -1,8 +1,18 @@
 <!-- Dos de carte. Dimensionné en unités de conteneur (cqw) pour suivre la largeur disponible. -->
+<script setup lang="ts">
+defineProps<{
+  /** Texte discret en haut (numéro de la carte dans le catalogue). */
+  label?: string
+  /** Couleur de la collection, reprise par le liseré de l'emblème. */
+  color?: string
+}>()
+</script>
+
 <template>
-  <div class="back" aria-hidden="true">
+  <div class="back" aria-hidden="true" :style="color ? { '--ring': color } : undefined">
     <div class="frame">
       <div class="pattern" />
+      <span v-if="label" class="label">{{ label }}</span>
       <div class="emblem">
         <span class="diamond" />
       </div>
@@ -52,7 +62,7 @@
   place-items: center;
   width: 34cqw;
   height: 34cqw;
-  border: 0.4cqw solid rgb(168 131 47 / 0.8);
+  border: 0.4cqw solid var(--ring, rgb(168 131 47 / 0.8));
   border-radius: 50%;
   box-shadow:
     0 0 0 2cqw rgb(26 24 21 / 0.9),
@@ -66,6 +76,15 @@
   transform: rotate(45deg);
   background: linear-gradient(135deg, #f4e4b0, #a8832f 55%, #6f5520);
   box-shadow: 0 0 4cqw rgb(244 228 176 / 0.35);
+}
+
+.label {
+  position: absolute;
+  top: 8cqw;
+  font: 600 6cqw var(--font-serif);
+  letter-spacing: 0.12em;
+  color: #d9c38a;
+  font-variant-numeric: tabular-nums;
 }
 
 .brand {

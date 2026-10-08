@@ -29,7 +29,9 @@ async function confirmExport() {
   try {
     const pack = await store.exportPack(selection.value[scope.value])
     downloadJson(pack, `axomaster-${slugify(store.authorName)}-${today()}.json`)
-    toast.show(`${pack.cards.length} carte${pack.cards.length > 1 ? 's' : ''} exportée${pack.cards.length > 1 ? 's' : ''}`)
+    toast.show(
+      `${pack.cards.length} carte${pack.cards.length > 1 ? 's' : ''} exportée${pack.cards.length > 1 ? 's' : ''}`,
+    )
     emit('close')
   } finally {
     busy.value = false
@@ -40,14 +42,13 @@ async function confirmExport() {
 <template>
   <BaseDialog :open="open" title="Exporter un paquet" @close="emit('close')">
     <p class="muted intro">
-      Le fichier contient les cartes et leurs images. Envoyez-le à vos collègues : ils
-      l’importeront depuis leur galerie.
+      Le fichier contient les cartes et leurs images. Envoyez-le à vos collègues : ils l’importeront
+      depuis leur galerie d’administration.
     </p>
 
-    <div class="field">
-      <label for="export-author">Signé par</label>
-      <input id="export-author" v-model.trim="store.author" class="input" placeholder="Votre nom" maxlength="80" />
-    </div>
+    <p class="muted">
+      Signé par <strong>{{ store.authorName }}</strong>.
+    </p>
 
     <fieldset class="scope">
       <legend class="label">Cartes à exporter</legend>
@@ -57,7 +58,8 @@ async function confirmExport() {
       </label>
       <label>
         <input v-model="scope" type="radio" value="filtered" />
-        Les cartes affichées (filtres actuels) <span class="muted">({{ selection.filtered.length }})</span>
+        Les cartes affichées (filtres actuels)
+        <span class="muted">({{ selection.filtered.length }})</span>
       </label>
       <label>
         <input v-model="scope" type="radio" value="mine" />
@@ -67,7 +69,12 @@ async function confirmExport() {
 
     <template #footer>
       <button class="btn" type="button" @click="emit('close')">Annuler</button>
-      <button class="btn btn-primary" type="button" :disabled="!count || busy" @click="confirmExport">
+      <button
+        class="btn btn-primary"
+        type="button"
+        :disabled="!count || busy"
+        @click="confirmExport"
+      >
         {{ busy ? 'Préparation…' : `Télécharger (${count})` }}
       </button>
     </template>

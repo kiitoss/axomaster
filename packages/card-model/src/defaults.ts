@@ -5,7 +5,7 @@ export const CARD_WIDTH = 630
 export const CARD_HEIGHT = 880
 
 export function newId(): string {
-  return globalThis.crypto.randomUUID()
+  return crypto.randomUUID()
 }
 
 export function nowIso(): string {

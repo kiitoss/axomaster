@@ -1,23 +1,20 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   cardImageIds,
   createPack,
-  DEFAULT_CATEGORIES,
   newId,
   nowIso,
+  type AdminCard,
   type Card,
   type CardPack,
+  type CardStatus,
   type Category,
 } from '@axomaster/card-model'
-import { localRepository } from '@/storage/repository'
-import {
-  deleteImages,
-  getImageDataUrl,
-  listImageIds,
-  putImageDataUrl,
-} from '@/storage/imageStore'
+import { del, get, post, put } from '@/api/client'
+import { getImageDataUrl, putImageDataUrl } from '@/storage/imageStore'
 import { clone } from '@/lib/clone'
+import { useAuthStore } from './auth'
 
 export type DuplicateStrategy = 'skip' | 'replace' | 'copy'
 
@@ -27,19 +24,20 @@ export interface ImportReport {
   skipped: number
 }
 
+/**
+ * Cartes et catégories. Les catégories servent à tout le monde (rendu des cartes) ; les cartes
+ * complètes, brouillons compris, ne sont chargées que pour l'administration.
+ */
 export const useCardsStore = defineStore('cards', () => {
-  const repo = localRepository
-  const initial = repo.load()
+  const auth = useAuthStore()
 
-  const cards = ref<Card[]>(initial.cards)
-  const categories = ref<Category[]>(initial.categories ?? clone(DEFAULT_CATEGORIES))
-  const author = ref(initial.author)
+  const cards = ref<Card[]>([])
+  const statuses = ref<Record<string, CardStatus>>({})
+  const categories = ref<Category[]>([])
+  let categoriesLoaded: Promise<void> | null = null
+  let cardsLoaded: Promise<void> | null = null
 
-  watch(cards, (v) => repo.saveCards(v), { deep: true })
-  watch(categories, (v) => repo.saveCategories(v), { deep: true })
-  watch(author, (v) => repo.saveAuthor(v))
-
-  const authorName = computed(() => author.value.trim() || 'Anonyme')
+  const authorName = computed(() => auth.user?.displayName ?? 'Anonyme')
 
   /** Auteurs distincts des cartes, pour le filtre de provenance. */
   const authors = computed(() =>
@@ -47,6 +45,27 @@ export const useCardsStore = defineStore('cards', () => {
       a.localeCompare(b, 'fr'),
     ),
   )
+
+  function ensureCategories(force = false) {
+    if (!categoriesLoaded || force) {
+      categoriesLoaded = get<Category[]>('categories').then((list) => {
+        categories.value = list
+      })
+      categoriesLoaded.catch(() => (categoriesLoaded = null))
+    }
+    return categoriesLoaded
+  }
+
+  function ensureAdminCards(force = false) {
+    if (!cardsLoaded || force) {
+      cardsLoaded = get<AdminCard[]>('admin/cards').then((list) => {
+        cards.value = list.map((entry) => entry.card)
+        statuses.value = Object.fromEntries(list.map((entry) => [entry.card.id, entry.status]))
+      })
+      cardsLoaded.catch(() => (cardsLoaded = null))
+    }
+    return Promise.all([cardsLoaded, ensureCategories(force)])
+  }
 
   function getCard(id: string) {
     return cards.value.find((c) => c.id === id)
@@ -56,20 +75,32 @@ export const useCardsStore = defineStore('cards', () => {
     return id ? (categories.value.find((c) => c.id === id) ?? null) : null
   }
 
-  function saveCard(card: Card) {
+  function statusOf(id: string): CardStatus {
+    return statuses.value[id] ?? 'draft'
+  }
+
+  function storeLocally(entry: AdminCard) {
+    const index = cards.value.findIndex((c) => c.id === entry.card.id)
+    if (index === -1) cards.value.unshift(entry.card)
+    else cards.value[index] = entry.card
+    statuses.value[entry.card.id] = entry.status
+  }
+
+  async function saveCard(card: Card) {
     const next = clone({ ...card, updatedAt: nowIso() })
-    const index = cards.value.findIndex((c) => c.id === card.id)
-    if (index === -1) cards.value.unshift(next)
-    else cards.value[index] = next
-    return next
+    const saved = await put<AdminCard>(`admin/cards/${encodeURIComponent(next.id)}`, next)
+    storeLocally(saved)
+    return saved.card
   }
 
   async function removeCard(id: string) {
+    await del(`admin/cards/${encodeURIComponent(id)}`)
     cards.value = cards.value.filter((c) => c.id !== id)
+    delete statuses.value[id]
     await collectGarbage()
   }
 
-  function duplicateCard(id: string) {
+  async function duplicateCard(id: string) {
     const source = getCard(id)
     if (!source) return null
     const now = nowIso()
@@ -83,8 +114,13 @@ export const useCardsStore = defineStore('cards', () => {
       updatedAt: now,
     }
     copy.layers.forEach((l) => (l.id = newId()))
-    cards.value.unshift(copy)
-    return copy
+    return saveCard(copy)
+  }
+
+  async function setStatus(ids: string[], status: CardStatus) {
+    if (!ids.length) return
+    await post('admin/cards/status', { ids, status })
+    for (const id of ids) statuses.value[id] = status
   }
 
   function nextNumber(categoryId: string | null) {
@@ -94,13 +130,21 @@ export const useCardsStore = defineStore('cards', () => {
     return numbers.length ? Math.max(...numbers) + 1 : 1
   }
 
-  function addCategory(name: string, color: string) {
-    const category = { id: newId(), name, color }
+  async function addCategory(name: string, color: string) {
+    const category = await post<Category>('admin/categories', { name, color })
     categories.value.push(category)
     return category
   }
 
-  function removeCategory(id: string) {
+  async function updateCategory(category: Category) {
+    await put(`admin/categories/${encodeURIComponent(category.id)}`, {
+      name: category.name.trim() || 'Sans nom',
+      color: category.color,
+    })
+  }
+
+  async function removeCategory(id: string) {
+    await del(`admin/categories/${encodeURIComponent(id)}`)
     categories.value = categories.value.filter((c) => c.id !== id)
     cards.value.forEach((c) => {
       if (c.categoryId === id) c.categoryId = null
@@ -129,64 +173,72 @@ export const useCardsStore = defineStore('cards', () => {
     return pack.cards.filter((c) => ids.has(c.id)).length
   }
 
+  /** Importe un paquet : les nouvelles cartes arrivent en brouillon. */
   async function importPack(pack: CardPack, strategy: DuplicateStrategy): Promise<ImportReport> {
     for (const [id, dataUrl] of Object.entries(pack.images)) {
       await putImageDataUrl(id, dataUrl)
     }
 
-    for (const category of pack.categories) {
-      if (!getCategory(category.id)) categories.value.push(clone(category))
-    }
-
     const report: ImportReport = { added: 0, replaced: 0, skipped: 0 }
     const importedAt = nowIso()
+    const existing = new Set(cards.value.map((c) => c.id))
+    const toSave: Card[] = []
     for (const incoming of pack.cards) {
       const card = clone(incoming)
       // On conserve la provenance d'origine d'une carte re-partagée.
       if (card.source.kind === 'local') {
         card.source = { kind: 'imported', from: pack.author, importedAt }
       }
-      const index = cards.value.findIndex((c) => c.id === card.id)
-      if (index === -1) {
-        cards.value.unshift(card)
+      if (!existing.has(card.id)) {
         report.added++
       } else if (strategy === 'replace') {
-        cards.value[index] = card
         report.replaced++
       } else if (strategy === 'copy') {
         card.id = newId()
         card.layers.forEach((l) => (l.id = newId()))
-        cards.value.unshift(card)
         report.added++
       } else {
         report.skipped++
+        continue
       }
+      toSave.push(card)
     }
 
-    await collectGarbage()
+    await post('admin/import', {
+      categories: pack.categories.filter((c) => !getCategory(c.id)),
+      cards: toSave,
+    })
+    await ensureAdminCards(true)
     return report
   }
 
-  /** Supprime les images qui ne sont plus référencées par aucune carte. */
-  async function collectGarbage(keep: string[] = []) {
-    const used = new Set([...cards.value.flatMap(cardImageIds), ...keep])
-    const orphans = (await listImageIds()).filter((id) => !used.has(id))
-    await deleteImages(orphans)
+  /** Demande au serveur de supprimer les images qui ne sont plus référencées. */
+  async function collectGarbage() {
+    try {
+      await post('admin/images/gc')
+    } catch (err) {
+      console.warn('Nettoyage des images impossible', err)
+    }
   }
 
   return {
     cards,
+    statuses,
     categories,
-    author,
     authorName,
     authors,
+    ensureCategories,
+    ensureAdminCards,
     getCard,
     getCategory,
+    statusOf,
     saveCard,
     removeCard,
     duplicateCard,
+    setStatus,
     nextNumber,
     addCategory,
+    updateCategory,
     removeCategory,
     exportPack,
     countDuplicates,

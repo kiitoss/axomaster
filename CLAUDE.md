@@ -1,17 +1,20 @@
 # CLAUDE.md
 
-AxoMaster : générateur de cartes à collectionner (personnes, événements, projets), inspiré de
-WikiMasters. Démo 100 % front, sans backend : tout est stocké dans le navigateur.
+AxoMaster : jeu de cartes à collectionner (personnes, événements, projets), inspiré de
+WikiMasters. Les admins créent et publient les cartes ; les joueurs les obtiennent dans des
+boosters et se les échangent. Front Vue + API Cloudflare Worker (D1).
 
 ## Commandes
 
 ```bash
 pnpm install
-pnpm dev          # app web (Vite)
-pnpm typecheck    # tsc (card-model) + vue-tsc (web)
-pnpm test         # vitest (card-model)
+pnpm db:migrate   # migrations D1 locales
+pnpm db:seed      # comptes de démo (admin/admin1234, alice/alice1234, bob/bob12345)
+pnpm dev          # Vite (:5173) + wrangler dev (:8787), proxy /api
+pnpm typecheck    # tsc (card-model, api) + vue-tsc (web)
+pnpm test         # vitest (card-model) + vitest-pool-workers (api)
 pnpm lint         # eslint
-pnpm build        # typecheck + build de production
+pnpm build        # typecheck + build du front
 ```
 
 Avant de considérer une tâche terminée : `pnpm typecheck && pnpm lint && pnpm test`.
@@ -21,36 +24,52 @@ Avant de considérer une tâche terminée : `pnpm typecheck && pnpm lint && pnpm
 Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
 
 - `packages/card-model` — TS pur, sans dépendance UI. Source de vérité du modèle.
-  - `schema.ts` : schémas zod (carte, calques, collections, paquet d'échange). Les types de
-    `types.ts` sont **dérivés** des schémas (`z.infer`) : modifier le schéma, pas les types.
+  - `schema.ts` : schémas zod (carte, calques, catégories, paquet d'échange). `api.ts` : contrats
+    de l'API (DTO). Les types de `types.ts` sont **dérivés** (`z.infer`) : modifier le schéma.
   - `pack.ts` : `createPack` / `parsePack` + migrations de version.
-  - `rarities.ts`, `defaults.ts` : raretés, dimensions de référence, fabriques (`createBlankCard`,
-    `createTextLayer`…), `newId()`.
+  - `booster.ts` (`drawBooster`), `boosterQuota.ts` (stock périodique + bonus, logique pure).
   - Consommé directement en source (`exports: ./src/index.ts`), pas d'étape de build.
+- `apps/api` — Cloudflare Worker, Hono, D1. Un seul Worker sert aussi `apps/web/dist`
+  (`assets` dans `wrangler.jsonc`) ; seules les routes `/api/*` passent par le code.
+  - `migrations/` : schéma SQL (une nouvelle migration par changement, jamais modifier une
+    migration appliquée).
+  - `src/routes/` : `auth` (login/logout/me), `admin` (cartes, catégories, joueurs, réglages,
+    images, import), `player` (catégories, catalogue, boosters, joueurs, images), `trades`.
+  - `src/lib/` : sessions et mots de passe (PBKDF2 WebCrypto), accès D1, stockage d'images
+    (R2 si le binding `IMAGES` existe, sinon table D1).
+  - `scripts/` : `create-user`, `seed` (via `wrangler d1 execute`).
 - `apps/web` — Vue 3 (`<script setup>`), Vite, Pinia, vue-router (hash history), lucide-vue-next.
-  - `components/card/CardView.vue` : **rendu unique** d'une carte, partout (galerie, plein écran,
-    éditeur, export PNG). Dessinée à 630 × 880 px puis mise à l'échelle par `transform: scale`.
-  - `components/editor/` : `LayerPanel`, `EditorCanvas` (overlay de sélection / poignées),
-    `PropertiesPanel`. L'état est partagé via `provideEditor` / `useEditor`
-    (`composables/editor.ts`), pas via des props.
-  - `composables/useHistory.ts` : annuler / rétablir par instantanés JSON, regroupés par
-    temporisation ; les actions structurelles appellent `checkpoint()`.
-  - `stores/cards.ts` : store Pinia (cartes, collections, nom de l'auteur, import / export,
-    nettoyage des images orphelines).
-  - `storage/` : `repository.ts` (localStorage, derrière l'interface `CardRepository`) et
-    `imageStore.ts` (IndexedDB via idb-keyval).
+  - `api/client.ts` : appels HTTP, URL **relatives** (`api/...`).
+  - Routeur : `meta.public` / `meta.admin` + garde globale. Espace joueur (`/`, `/boosters`,
+    `/echanges`) et espace admin (`/admin/...`), la navigation suit l'espace de la route.
+  - Stores : `auth`, `cards` (catégories pour tous, cartes complètes pour l'admin), `collection`
+    (catalogue + boosters du joueur), `trades`.
+  - `components/card/CardView.vue` : **rendu unique** d'une carte, partout. Dessinée à
+    630 × 880 px puis mise à l'échelle. Le dos est `components/booster/CardBack.vue`.
+  - `components/editor/` : état partagé via `provideEditor` / `useEditor`. `useHistory` :
+    annuler / rétablir par instantanés JSON.
 
 ## Conventions et invariants
 
 - **Interface en français** uniquement (pas d'i18n). Commentaires de code en français.
 - Coordonnées des calques en **% de la carte** ; tailles de police en px de la carte de référence.
   L'ordre du tableau `layers` est l'ordre d'empilement (dernier = devant).
-- Les **images ne vont jamais dans le localStorage** : stocker le blob dans IndexedDB
-  (`putImage`) et ne garder que l'`imageId` dans la carte. Compresser avant (`compressImage`,
-  WebP ≤ 1200 px). Penser à `collectGarbage()` après suppression.
+- **Le serveur fait foi** : tirages de boosters, quotas, inventaires et échanges sont calculés
+  côté API. Le front n'a rien de persistant hormis le cookie de session.
+- Les **cartes non possédées** ne sortent jamais de l'API (catalogue : `id`, `number`,
+  `categoryId` seulement). Une carte en brouillon est invisible des joueurs.
+- **Atomicité D1** : une opération multi-écritures passe par un seul `db.batch()` ; les gardes
+  reposent sur les contraintes `CHECK` (quantité ≥ 0, statut d'échange, bonus ≥ 0) qui annulent
+  tout le batch. Utiliser `inventoryDelta()` pour toucher aux inventaires.
+- **Images** : jamais dans les données de carte, seulement un `imageId`. Compresser avant envoi
+  (`compressImage`, WebP ≤ 1200 px), puis `putImage` (API). Le nettoyage des orphelines est
+  serveur (`collectGarbage()` → `POST /api/admin/images/gc`, délai de grâce de 6 h).
 - Copier les données réactives avec `clone()` (`lib/clone.ts`), pas `structuredClone`.
 - **Format d'échange** (`axomaster.pack`) : toute modification du schéma de carte impose
   d'incrémenter `PACK_VERSION` et d'ajouter une migration dans `pack.ts`, avec un test.
+- **Contrats d'API** : ajouter / modifier le schéma dans `card-model/src/api.ts`, valider les
+  entrées côté Worker avec `readJson(c, schema)`, renvoyer les erreurs via `HttpError` (message
+  français affiché tel quel par le front).
 - Design sobre et classique : utiliser les tokens CSS de `styles/tokens.css` et les classes de
   `styles/base.css` (`.btn`, `.input`, `.field`, `.segmented`…) ; pas de framework CSS.
   Titres en Cormorant Garamond (serif), interface en Inter, un seul accent doré.
@@ -60,15 +79,19 @@ Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
   Sur mobile : barre d'onglets en bas, éditeur plein écran avec panneaux en onglets, dialogues en
   feuille basse. Gestes de l'éditeur en Pointer Events (glisser, pincer à deux doigts).
 - Formatage : Prettier (sans point-virgule, guillemets simples, 100 colonnes).
+- Nommer les scripts pnpm autrement que les commandes intégrées (`deploy`, `publish`…) :
+  d'où `release`.
 
 ## Déploiement
 
-GitHub Pages via `.github/workflows/deploy.yml`, déclenché par chaque tag poussé. Le site est
-servi sous un sous-chemin (`/axomaster/`) : garder `base: './'` dans `vite.config.ts` et
-`createWebHashHistory()` dans le routeur, ne jamais écrire de chemin absolu (`/assets/…`) vers
-une ressource. `VITE_APP_VERSION` contient le tag publié.
+Cloudflare (Worker + D1), via `.github/workflows/deploy.yml` déclenché par chaque tag poussé :
+tests, build, `wrangler d1 migrations apply --remote`, `wrangler deploy`. Procédure complète :
+`docs/deploiement.md`. Garder `base: './'` dans `vite.config.ts`, `createWebHashHistory()` et des
+URL relatives : ne jamais écrire de chemin absolu (`/assets/…`, `/api/…`) côté front.
+`VITE_APP_VERSION` contient le tag publié.
 
 ## Hors périmètre actuel
 
-Backend, comptes, échange de cartes, boosters, app mobile Flutter. Garder `card-model`
-indépendant de Vue pour pouvoir le réutiliser côté serveur et en dériver un JSON Schema.
+Connexion Microsoft Entra ID (prévue : colonne `users.external_id`, routes OIDC dans
+`routes/auth.ts`), app mobile Flutter. Garder `card-model` indépendant de Vue pour pouvoir en
+dériver un JSON Schema.

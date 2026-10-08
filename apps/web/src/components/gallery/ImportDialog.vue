@@ -5,6 +5,7 @@ import { parsePack, type CardPack } from '@axomaster/card-model'
 import { useCardsStore, type DuplicateStrategy } from '@/stores/cards'
 import { useToast } from '@/composables/useToast'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
+import { errorMessage } from '@/api/client'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -71,14 +72,18 @@ async function confirmImport() {
     emit('close')
   } catch (err) {
     console.error(err)
-    toast.error("L'import a échoué (espace de stockage insuffisant ?)")
+    toast.error(`L'import a échoué : ${errorMessage(err)}`)
   } finally {
     busy.value = false
   }
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 }
 </script>
 
@@ -109,20 +114,31 @@ function formatDate(iso: string) {
         <li v-if="newCategories.length">
           Nouvelles collections : {{ newCategories.map((c) => c.name).join(', ') }}
         </li>
-        <li v-if="duplicates">{{ duplicates }} déjà présente{{ duplicates > 1 ? 's' : '' }} dans votre galerie</li>
+        <li v-if="duplicates">
+          {{ duplicates }} déjà présente{{ duplicates > 1 ? 's' : '' }} dans votre galerie
+        </li>
       </ul>
+      <p class="muted">
+        Les nouvelles cartes arrivent en brouillon : publiez-les pour les mettre en jeu.
+      </p>
 
       <fieldset v-if="duplicates" class="strategy">
         <legend class="label">Cartes déjà présentes</legend>
         <label><input v-model="strategy" type="radio" value="skip" /> Les ignorer</label>
-        <label><input v-model="strategy" type="radio" value="replace" /> Les remplacer par la version importée</label>
+        <label><input v-model="strategy" type="radio" value="replace" /> Les remplacer par la version
+          importée</label>
         <label><input v-model="strategy" type="radio" value="copy" /> Les importer en double</label>
       </fieldset>
     </div>
 
     <template #footer>
       <button class="btn" type="button" @click="emit('close')">Annuler</button>
-      <button class="btn btn-primary" type="button" :disabled="!pack || busy" @click="confirmImport">
+      <button
+        class="btn btn-primary"
+        type="button"
+        :disabled="!pack || busy"
+        @click="confirmImport"
+      >
         {{ busy ? 'Import…' : 'Importer' }}
       </button>
     </template>
