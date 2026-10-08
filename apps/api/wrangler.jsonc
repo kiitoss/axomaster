@@ -15,8 +15,7 @@
     {
       "binding": "DB",
       "database_name": "axomaster",
-      // Remplacer par l'identifiant renvoyé par `wrangler d1 create axomaster` (cf. docs/deploiement.md).
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "f4af2552-f256-40f4-8d1f-02dba51876f2",
       "migrations_dir": "migrations",
     },
   ],
