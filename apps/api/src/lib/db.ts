@@ -1,4 +1,4 @@
-import type { AdminCard, Card, CardStatus, OwnedCard } from '@axomaster/card-model'
+import type { AdminCard, Card, CardStatus, OwnedCard, SharedCard } from '@axomaster/card-model'
 import { placeholders } from './http'
 
 export interface CardRow {
@@ -103,6 +103,31 @@ export async function ownedCards(db: D1Database, userId: string): Promise<OwnedC
     .bind(userId)
     .all<{ data: string; quantity: number }>()
   return results.map((r) => ({ card: parseCard(r), quantity: r.quantity }))
+}
+
+/** Carte montrée à un autre joueur : son contenu seulement s'il la possède (`visible`). */
+export function shareCard(card: Card, quantity: number, visible: boolean): SharedCard {
+  const base = { id: card.id, number: card.number, categoryId: card.categoryId, quantity }
+  return visible ? { ...base, card } : base
+}
+
+/** Cartes possédées par `ownerId`, vues par `viewerId` (contenu masqué s'il ne les a pas). */
+export async function playerCardsFor(
+  db: D1Database,
+  ownerId: string,
+  viewerId: string,
+): Promise<SharedCard[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT c.data, uc.quantity, mine.quantity AS mine FROM user_cards uc
+       JOIN cards c ON c.id = uc.card_id
+       LEFT JOIN user_cards mine ON mine.card_id = uc.card_id AND mine.user_id = ?2
+       WHERE uc.user_id = ?1 AND uc.quantity > 0
+       ORDER BY c.category_id, c.number, c.id`,
+    )
+    .bind(ownerId, viewerId)
+    .all<{ data: string; quantity: number; mine: number | null }>()
+  return results.map((r) => shareCard(parseCard(r), r.quantity, (r.mine ?? 0) > 0))
 }
 
 /** Quantités possédées par carte. */

@@ -19,6 +19,10 @@
       "migrations_dir": "migrations",
     },
   ],
+  // Notifications push : recharges de boosters vérifiées toutes les 5 minutes.
+  "triggers": { "crons": ["*/5 * * * *"] },
+  // Notifications : secrets VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY et VAPID_SUBJECT (contact
+  // `mailto:…`), via `wrangler secret put` ou `.dev.vars` en local. Sans eux, pas de push.
   // Images : stockées dans D1 par défaut. Pour utiliser R2 à la place (palier gratuit 10 Go,
   // moyen de paiement requis sur le compte), créer le bucket puis décommenter :
   // "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "axomaster-images" }]

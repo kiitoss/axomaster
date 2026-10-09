@@ -33,7 +33,12 @@ function onBackdrop(e: MouseEvent) {
     <div class="panel">
       <header class="head">
         <h2>{{ title }}</h2>
-        <button class="btn btn-ghost btn-icon" type="button" aria-label="Fermer" @click="emit('close')">
+        <button
+          class="btn btn-ghost btn-icon"
+          type="button"
+          aria-label="Fermer"
+          @click="emit('close')"
+        >
           <X />
         </button>
       </header>
@@ -59,7 +64,7 @@ function onBackdrop(e: MouseEvent) {
 }
 
 .dialog::backdrop {
-  background: rgb(29 27 24 / 0.35);
+  background: var(--backdrop);
   backdrop-filter: blur(2px);
 }
 

@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { CreateTradeRequest, OwnedCard, Player, Trade } from '@axomaster/card-model'
+import type { CreateTradeRequest, Player, SharedCard, Trade } from '@axomaster/card-model'
 import { get, post } from '@/api/client'
 import { useAuthStore } from './auth'
 import { useCollectionStore } from './collection'
@@ -30,7 +30,7 @@ export const useTradesStore = defineStore('trades', () => {
   }
 
   function playerCards(id: string) {
-    return get<OwnedCard[]>(`players/${encodeURIComponent(id)}/cards`)
+    return get<SharedCard[]>(`players/${encodeURIComponent(id)}/cards`)
   }
 
   async function propose(request: CreateTradeRequest) {

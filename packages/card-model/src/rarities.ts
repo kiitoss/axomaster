@@ -17,8 +17,8 @@ export const RARITY_INFO: Record<Rarity, RarityInfo> = {
   common: {
     label: 'Commune',
     rank: 1,
-    color: '#8c877d',
-    frame: ['#ebe6dc', '#d3ccbf', '#e4ded2'],
+    color: '#64748b',
+    frame: ['#eef2f7', '#cbd5e1', '#e2e8f0'],
     holo: 0.15,
   },
   uncommon: {

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { GIFT_MESSAGE_MAX } from './notifications'
 import { cardSchema, categorySchema } from './schema'
 
 /**
@@ -46,6 +47,20 @@ export const adminUserSchema = sessionUserSchema.extend({
   totalCards: z.number().int(),
 })
 
+/** Inventaire d'un joueur vu par l'admin : uniquement les cartes possédées (quantité > 0). */
+export const playerCardSchema = z.object({
+  cardId: id,
+  quantity: z.number().int(),
+  firstObtainedAt: isoDate,
+})
+
+/** Possession d'une carte par un joueur (tableau joueurs × cartes de l'admin). */
+export const ownershipEntrySchema = z.object({
+  userId: id,
+  cardId: id,
+  quantity: z.number().int().min(1),
+})
+
 export const createUserRequestSchema = z.object({
   username: usernameSchema,
   displayName: z.string().trim().min(1).max(80),
@@ -83,6 +98,18 @@ export const ownedCardSchema = z.object({
   quantity: z.number().int().min(1),
 })
 
+/**
+ * Carte d'un autre joueur (inventaire, échange) : `card` n'est renseignée que si le joueur
+ * connecté en possède lui-même un exemplaire ; sinon seule sa place dans le catalogue est révélée.
+ */
+export const sharedCardSchema = z.object({
+  id,
+  number: z.number().int().nullable(),
+  categoryId: id.nullable(),
+  quantity: z.number().int().min(1),
+  card: cardSchema.optional(),
+})
+
 /** Une carte non possédée ne révèle que sa place dans le catalogue. */
 export const catalogueEntrySchema = z.discriminatedUnion('owned', [
   ownedCardSchema.extend({ owned: z.literal(true) }),
@@ -97,6 +124,18 @@ export const catalogueEntrySchema = z.discriminatedUnion('owned', [
 export const catalogueSchema = z.object({
   categories: z.array(categorySchema),
   entries: z.array(catalogueEntrySchema),
+})
+
+// ---------- Classement ----------
+
+/**
+ * Classement des joueurs : uniquement des identifiants de cartes publiées, jamais leur contenu.
+ * Le front croise avec son propre catalogue pour savoir quelles cartes il peut montrer.
+ */
+export const leaderboardSchema = z.object({
+  cards: z.array(z.object({ id, number: z.number().int().nullable(), categoryId: id.nullable() })),
+  /** Triés par nombre de cartes débloquées décroissant, puis par nom. */
+  players: z.array(playerSchema.extend({ owned: z.array(id) })),
 })
 
 // ---------- Boosters ----------
@@ -121,23 +160,13 @@ export const boosterStockSchema = z.object({
   nextAt: isoDate.nullable(),
 })
 
-export const BOOSTER_POOL_ALL = 'all'
-
-export const boosterOfferSchema = z.object({
-  /** `all` ou identifiant de catégorie. */
-  pool: id,
-  title: z.string(),
-  color: z.string(),
-  cardCount: z.number().int(),
-})
-
+/** Un booster unique, tiré parmi toutes les cartes publiées. */
 export const boostersSchema = z.object({
   stock: boosterStockSchema,
   size: z.number().int(),
-  offers: z.array(boosterOfferSchema),
+  /** Nombre de cartes publiées, donc pouvant sortir d'un booster. */
+  cardCount: z.number().int(),
 })
-
-export const openBoosterRequestSchema = z.object({ pool: id })
 
 export const openBoosterResponseSchema = z.object({
   cards: z.array(cardSchema),
@@ -146,7 +175,11 @@ export const openBoosterResponseSchema = z.object({
   stock: boosterStockSchema,
 })
 
-export const giftBoostersRequestSchema = z.object({ count: z.number().int().min(1).max(20) })
+export const giftBoostersRequestSchema = z.object({
+  count: z.number().int().min(1).max(20),
+  /** Message affiché dans la notification push (texte par défaut si vide). */
+  message: z.string().trim().max(GIFT_MESSAGE_MAX).default(''),
+})
 
 // ---------- Échanges ----------
 
@@ -174,10 +207,23 @@ export const tradeSchema = z.object({
   createdAt: isoDate,
   resolvedAt: isoDate.nullable(),
   /** Cartes données par `from`. */
-  offer: z.array(ownedCardSchema),
+  offer: z.array(sharedCardSchema),
   /** Cartes demandées à `to`. */
-  request: z.array(ownedCardSchema),
+  request: z.array(sharedCardSchema),
 })
+
+// ---------- Notifications push ----------
+
+/** Clé publique VAPID ; `null` si les notifications ne sont pas configurées sur le serveur. */
+export const pushConfigSchema = z.object({ publicKey: z.string().nullable() })
+
+/** Abonnement Web Push (forme de `PushSubscription.toJSON()`). */
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.url().max(1000),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
+})
+
+export const pushUnsubscribeRequestSchema = z.object({ endpoint: z.string().max(1000) })
 
 /** Corps d'erreur renvoyé par l'API. */
 export const apiErrorSchema = z.object({ error: z.string() })

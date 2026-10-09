@@ -8,6 +8,7 @@ import '@fontsource/cormorant-garamond/500-italic.css'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
 import './styles/tokens.css'
 import './styles/base.css'
 
@@ -15,6 +16,9 @@ import App from './App.vue'
 import { router } from './router'
 import { setUnauthorizedHandler } from './api/client'
 import { useAuthStore } from './stores/auth'
+import { registerServiceWorker } from './composables/usePush'
+
+registerServiceWorker()
 
 const app = createApp(App).use(createPinia())
 

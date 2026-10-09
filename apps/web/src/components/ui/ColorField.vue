@@ -8,7 +8,7 @@ const isNone = computed(() => model.value === 'transparent')
 const hex = computed(() => (/^#[0-9a-f]{6}$/i.test(model.value) ? model.value : '#000000'))
 
 function toggleNone(e: Event) {
-  model.value = (e.target as HTMLInputElement).checked ? 'transparent' : '#1d1b18'
+  model.value = (e.target as HTMLInputElement).checked ? 'transparent' : '#0f172a'
 }
 
 const id = useId()
@@ -18,7 +18,13 @@ const id = useId()
   <div class="field">
     <label :for="id">{{ props.label }}</label>
     <div class="row">
-      <input :id="id" type="color" :value="hex" :disabled="isNone" @input="model = ($event.target as HTMLInputElement).value" />
+      <input
+        :id="id"
+        type="color"
+        :value="hex"
+        :disabled="isNone"
+        @input="model = ($event.target as HTMLInputElement).value"
+      />
       <input v-model.lazy="model" class="input mono" :disabled="isNone" spellcheck="false" />
       <label v-if="allowNone" class="none">
         <input type="checkbox" :checked="isNone" @change="toggleNone" /> Aucune

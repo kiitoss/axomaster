@@ -1,14 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { BookOpen, Gift, RotateCcw, X } from 'lucide-vue-next'
-import {
-  RARITY_INFO,
-  RARITY_LIST,
-  RARITY_WEIGHTS,
-  type BoosterOffer,
-  type Card,
-} from '@axomaster/card-model'
+import { BookOpen, CircleQuestionMark, RotateCcw, Sparkles, X } from 'lucide-vue-next'
+import { RARITY_INFO, RARITY_LIST, RARITY_WEIGHTS, type Card } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
 import { useCollectionStore } from '@/stores/collection'
 import { useAuthStore } from '@/stores/auth'
@@ -36,7 +30,7 @@ onMounted(async () => {
   }
 })
 
-const offers = computed(() => collection.boosters?.offers ?? [])
+const cardCount = computed(() => collection.boosters?.cardCount ?? 0)
 const stock = computed(() => collection.boosters?.stock ?? null)
 const size = computed(() => collection.boosters?.size ?? 5)
 const available = computed(() => stock.value?.total ?? 0)
@@ -65,7 +59,7 @@ const countdown = computed(() => {
   const m = Math.floor((ms % 3_600_000) / 60_000)
   const sec = Math.floor((ms % 60_000) / 1000)
   const pad = (n: number) => String(n).padStart(2, '0')
-  return h ? `${h} h ${pad(m)}` : `${pad(m)} min ${pad(sec)}`
+  return `${pad(h)}:${pad(m)}:${pad(sec)}`
 })
 
 const odds = computed(() => {
@@ -81,12 +75,18 @@ function plural(n: number, word: string) {
   return `${n} ${word}${n > 1 ? 's' : ''}`
 }
 
+/** Bulle d'aide « ? » : taux d'apparition des raretés. */
+const helpOpen = ref(false)
+function closeHelp() {
+  helpOpen.value = false
+}
+window.addEventListener('click', closeHelp)
+
 // ---------- Machine à états de l'ouverture ----------
 
 type Phase = 'choose' | 'sealed' | 'opening' | 'reveal' | 'summary'
 
 const phase = ref<Phase>('choose')
-const booster = ref<BoosterOffer | null>(null)
 const drawn = ref<Card[]>([])
 const newIds = ref(new Set<string>())
 const busy = ref(false)
@@ -114,7 +114,7 @@ function clearTimers() {
 }
 
 /** Le tirage a lieu côté serveur ; l'animation démarre une fois les cartes reçues. */
-async function open(b: BoosterOffer) {
+async function open() {
   if (busy.value) return
   if (!available.value) {
     toast.show(
@@ -124,9 +124,8 @@ async function open(b: BoosterOffer) {
   }
   busy.value = true
   try {
-    const result = await collection.openBooster(b.pool)
+    const result = await collection.openBooster()
     clearTimers()
-    booster.value = b
     drawn.value = result.cards
     newIds.value = new Set(result.newCardIds)
     current.value = 0
@@ -144,14 +143,9 @@ async function open(b: BoosterOffer) {
   }
 }
 
-function reopen() {
-  if (booster.value) open(booster.value)
-}
-
 function close() {
   clearTimers()
   phase.value = 'choose'
-  booster.value = null
   viewerIndex.value = null
 }
 
@@ -188,7 +182,7 @@ function flip(i: number, card: Card) {
   if (rank >= RARITY_INFO.epic.rank && !reducedMotion) {
     flash.value = {
       key: Date.now(),
-      color: card.rarity === 'legendary' ? '#fff3d0' : RARITY_INFO[card.rarity].color,
+      color: card.rarity === 'legendary' ? '#ede9fe' : RARITY_INFO[card.rarity].color,
     }
   }
 }
@@ -240,6 +234,7 @@ watch([overlay, viewerIndex], ([on]) => {
 })
 
 function onKey(e: KeyboardEvent) {
+  if (helpOpen.value && e.key === 'Escape') closeHelp()
   if (!overlay.value || viewerIndex.value !== null) return
   if (e.key === 'Escape') close()
   else if (phase.value === 'reveal' && [' ', 'Enter', 'ArrowRight'].includes(e.key)) {
@@ -253,6 +248,7 @@ onBeforeUnmount(() => {
   clearTimers()
   clearInterval(ticker)
   window.removeEventListener('keydown', onKey)
+  window.removeEventListener('click', closeHelp)
   document.body.style.overflow = ''
 })
 
@@ -268,86 +264,95 @@ const hint = computed(() => {
 
 <template>
   <div class="boosters">
-    <section class="intro">
-      <p class="eyebrow">Boosters</p>
-      <h1>Ouvrir un booster</h1>
-      <p class="muted">
-        Chaque booster contient {{ size }} cartes tirées parmi les cartes en jeu, dont au moins une
-        rare ou mieux. Les cartes obtenues rejoignent votre catalogue.
-      </p>
-    </section>
+    <p v-if="loading" class="loading">Chargement…</p>
 
-    <section v-if="stock" class="stock" :class="{ out: !available }">
-      <Gift />
-      <div>
-        <p class="stock-count">
-          {{ available ? plural(available, 'booster') + ' à ouvrir' : 'Aucun booster à ouvrir' }}
+    <section v-else-if="cardCount" class="hero" :class="{ ready: available > 0 }">
+      <div class="pack-zone">
+        <div class="glow" aria-hidden="true">
+          <span class="rays" />
+          <span class="halo" />
+        </div>
+        <button
+          type="button"
+          class="hero-pack"
+          :disabled="busy || !available"
+          :aria-label="available ? 'Ouvrir le booster' : 'Aucun booster disponible'"
+          @click="open"
+        >
+          <BoosterPack title="AxoMaster" :caption="`${size} cartes`" />
+          <span v-if="available > 1" class="pack-count">×{{ available }}</span>
+        </button>
+        <p v-if="!available && countdown" class="pack-timer">
+          <strong>{{ countdown }}</strong>
+          <span>avant le prochain booster</span>
         </p>
-        <p class="muted">
-          <template v-if="stock.bonus">
-            Dont {{ plural(stock.bonus, 'booster') }} offert{{ stock.bonus > 1 ? 's' : '' }}.
+      </div>
+
+      <div class="cta">
+        <button class="open-btn" type="button" :disabled="busy || !available" @click="open">
+          <Sparkles /> {{ available ? 'Ouvrir le booster' : 'Bientôt disponible' }}
+        </button>
+        <p v-if="available" class="stock-line">
+          {{ plural(available, 'booster') }} à ouvrir
+          <template v-if="stock?.bonus">
+            · dont {{ stock.bonus }} offert{{ stock.bonus > 1 ? 's' : '' }}
           </template>
-          <template v-if="countdown">Prochain booster dans {{ countdown }}.</template>
-          <template v-else>Réserve pleine : ouvrez-en un pour relancer le compteur.</template>
         </p>
+        <p v-if="available && countdown" class="next">
+          +1 dans <strong>{{ countdown }}</strong>
+        </p>
+        <p v-else-if="available" class="next">
+          Réserve pleine : ouvrez-en un pour relancer le compteur
+        </p>
+      </div>
+
+      <div class="help" @click.stop>
+        <button
+          class="help-btn"
+          type="button"
+          :aria-expanded="helpOpen"
+          aria-label="Contenu d’un booster et taux d’apparition"
+          title="Taux d’apparition"
+          @click="helpOpen = !helpOpen"
+        >
+          <CircleQuestionMark />
+        </button>
+        <Transition name="pop">
+          <div v-if="helpOpen" class="help-pop" role="dialog" aria-label="Taux d’apparition">
+            <p class="help-title">Dans chaque booster</p>
+            <p class="help-text">
+              {{ size }} cartes tirées parmi les {{ cardCount }} en jeu, dont au moins une rare ou
+              mieux, révélée en dernier.
+            </p>
+            <ul>
+              <li v-for="o in odds" :key="o.rarity" :style="{ '--rarity': o.info.color }">
+                <span class="odds-pips">
+                  <i v-for="n in 5" :key="n" :class="{ on: n <= o.info.rank }" />
+                </span>
+                <span>{{ o.info.label }}</span>
+                <span class="odds-value">{{ o.percent }} %</span>
+              </li>
+            </ul>
+            <p class="help-note">Taux par emplacement, parmi les raretés présentes en jeu.</p>
+          </div>
+        </Transition>
       </div>
     </section>
 
-    <p v-if="loading" class="muted">Chargement…</p>
-
-    <template v-else-if="offers.length">
-      <section class="shelf">
-        <button
-          v-for="b in offers"
-          :key="b.pool"
-          type="button"
-          class="shelf-item"
-          :class="{ locked: !available }"
-          :disabled="busy"
-          :aria-label="`Ouvrir le booster ${b.title}`"
-          @click="open(b)"
-        >
-          <BoosterPack :title="b.title" :color="b.color" :caption="`${size} cartes`" />
-          <span class="shelf-count">{{ plural(b.cardCount, 'carte') }} en jeu</span>
-        </button>
-      </section>
-
-      <section class="odds">
-        <h2>Taux d’apparition</h2>
-        <ul>
-          <li v-for="o in odds" :key="o.rarity" :style="{ '--rarity': o.info.color }">
-            <span class="odds-pips"><i v-for="n in 5" :key="n" :class="{ on: n <= o.info.rank }" /></span>
-            <span class="odds-label">{{ o.info.label }}</span>
-            <span class="odds-value">{{ o.percent }} %</span>
-          </li>
-        </ul>
-        <p class="muted">
-          Par emplacement, parmi les raretés présentes dans le paquet. Le dernier emplacement est
-          garanti rare ou mieux.
-        </p>
-      </section>
-    </template>
-
     <section v-else class="empty">
       <h2>Aucune carte en jeu</h2>
-      <p class="muted">Les boosters seront disponibles dès que des cartes auront été publiées.</p>
+      <p>Les boosters seront disponibles dès que des cartes auront été publiées.</p>
       <div class="row">
         <RouterLink v-if="auth.isAdmin" class="btn btn-primary" to="/admin">
           Publier des cartes
         </RouterLink>
-        <RouterLink class="btn" to="/"><BookOpen /> Catalogue</RouterLink>
+        <RouterLink class="btn on-dark" to="/"><BookOpen /> Catalogue</RouterLink>
       </div>
     </section>
 
     <Teleport to="body">
       <Transition name="stage">
-        <div
-          v-if="overlay && booster"
-          class="stage"
-          :class="`phase-${phase}`"
-          role="dialog"
-          aria-modal="true"
-        >
+        <div v-if="overlay" class="stage" :class="`phase-${phase}`" role="dialog" aria-modal="true">
           <button
             class="close btn btn-ghost btn-icon"
             type="button"
@@ -363,13 +368,7 @@ const hint = computed(() => {
               :key="`pack-${run}`"
               class="pack-slot"
             >
-              <BoosterPack
-                :title="booster.title"
-                :color="booster.color"
-                :caption="`${size} cartes`"
-                tearable
-                @torn="onTorn"
-              />
+              <BoosterPack title="AxoMaster" :caption="`${size} cartes`" tearable @torn="onTorn" />
             </div>
 
             <div
@@ -393,7 +392,6 @@ const hint = computed(() => {
           </div>
 
           <div v-else :key="`summary-${run}`" class="summary">
-            <p class="eyebrow">{{ booster.title }}</p>
             <h2>Votre booster</h2>
             <div class="summary-cards">
               <button
@@ -415,11 +413,11 @@ const hint = computed(() => {
                 class="btn btn-primary"
                 type="button"
                 :disabled="busy"
-                @click="reopen"
+                @click="open"
               >
                 <RotateCcw /> Ouvrir un autre ({{ available }})
               </button>
-              <button class="btn on-dark" type="button" @click="close">Changer de paquet</button>
+              <button class="btn on-dark" type="button" @click="close">Retour</button>
             </div>
           </div>
 
@@ -454,105 +452,430 @@ const hint = computed(() => {
 </template>
 
 <style scoped>
+/* Page toujours « de nuit », dans les deux thèmes, comme la scène d'ouverture. */
 .boosters {
-  max-width: 1320px;
-  margin: 0 auto;
-  padding: var(--space-7) var(--space-6);
-}
-
-.intro {
-  margin-bottom: var(--space-6);
-}
-
-.intro h1 {
-  font-size: 52px;
-  line-height: 1.05;
-  font-weight: 500;
-}
-
-.intro .muted {
-  margin-top: var(--space-2);
-  max-width: 560px;
-}
-
-/* ---------- Présentoir ---------- */
-
-.shelf {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: var(--space-6) var(--space-5);
-  padding: var(--space-6) 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  min-height: calc(100dvh - var(--header-h) - var(--tabbar-h));
+  overflow: hidden;
+  background:
+    radial-gradient(55% 45% at 50% 40%, rgb(76 29 149 / 0.55), transparent 70%),
+    radial-gradient(40% 30% at 85% 100%, rgb(14 165 233 / 0.12), transparent 70%), #0f172a;
+  color: #e2e8f0;
 }
 
-.shelf-item {
+.loading {
+  place-self: center;
+  color: #94a3b8;
+}
+
+.hero {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  justify-content: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-4) var(--space-7);
+}
+
+/* ---------- Paquet lumineux ---------- */
+
+.pack-zone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.glow {
+  position: absolute;
+  z-index: -1;
+  inset: -45% -110%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0.3;
+  transition: opacity 0.6s;
+}
+
+.ready .glow {
+  opacity: 1;
+}
+
+.glow > span {
+  grid-area: 1 / 1;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.rays {
+  width: min(100%, 900px);
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgb(196 181 253 / 0.16) 0deg 3deg,
+    transparent 3deg 15deg
+  );
+  mask: radial-gradient(closest-side, #000 20%, transparent 95%);
+  animation: spin 50s linear infinite;
+}
+
+.halo {
+  width: min(70%, 640px);
+  background: radial-gradient(
+    closest-side,
+    rgb(167 139 250 / 0.55),
+    rgb(124 58 237 / 0.25) 45%,
+    transparent 100%
+  );
+  animation: pulse 3.2s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    scale: 1.12;
+    opacity: 0.7;
+  }
+}
+
+.hero-pack {
+  position: relative;
+  width: min(300px, 58vw, 36dvh);
   padding: 0;
   border: 0;
   background: none;
   font: inherit;
-  color: var(--ink-3);
+  color: inherit;
+  cursor: pointer;
+  animation: hover-float 4.5s ease-in-out infinite;
+}
+
+.hero-pack :deep(.pack) {
+  filter: drop-shadow(0 0 28px rgb(139 92 246 / 0.55));
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 0.5s;
+}
+
+.hero-pack:hover :deep(.pack),
+.hero-pack:focus-visible :deep(.pack) {
+  transform: translateY(-6px) rotate(-1.5deg) scale(1.02);
+}
+
+.hero-pack:active :deep(.pack) {
+  transform: scale(0.98);
+}
+
+.hero-pack:focus-visible {
+  outline: none;
+}
+
+.hero-pack:disabled {
+  cursor: default;
+}
+
+.hero:not(.ready) .hero-pack {
+  animation: none;
+}
+
+.hero:not(.ready) .hero-pack :deep(.pack) {
+  filter: grayscale(0.75) brightness(0.5);
+  transform: none;
+}
+
+/* Paquet verrouillé : son texte s'efface derrière le compte à rebours. */
+.hero:not(.ready) .hero-pack :deep(.content) {
+  opacity: 0;
+}
+
+@keyframes hover-float {
+  50% {
+    translate: 0 -10px;
+  }
+}
+
+.pack-count {
+  position: absolute;
+  top: 6%;
+  right: -6%;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #a78bfa, #6d28d9);
+  box-shadow:
+    0 0 0 3px #0f172a,
+    0 6px 20px rgb(109 40 217 / 0.6);
+  font: 700 17px var(--font-display);
+  color: #fff;
+}
+
+/* Compte à rebours au milieu du paquet assombri. */
+.pack-timer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+  text-align: center;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 0.6);
+}
+
+.pack-timer strong {
+  font: 700 clamp(30px, 6vw, 44px) / 1 var(--font-display);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.pack-timer span {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c4b5fd;
+}
+
+/* ---------- Appel à l'action ---------- */
+
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.open-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  margin-bottom: var(--space-1);
+  padding: 0 32px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #a78bfa, #7c3aed 55%, #6d28d9);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.15) inset,
+    0 10px 30px rgb(124 58 237 / 0.55);
+  font: 700 17px var(--font-display);
+  letter-spacing: -0.01em;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.open-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Reflet qui balaie le bouton. */
+.open-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.45) 50%,
+    transparent 65%
+  );
+  translate: -100% 0;
+  animation: sweep 3.2s ease-in-out infinite;
+}
+
+.open-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.2) inset,
+    0 14px 40px rgb(124 58 237 / 0.7);
+}
+
+.open-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.open-btn:disabled {
+  background: rgb(255 255 255 / 0.08);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.12) inset;
+  color: #94a3b8;
+  cursor: default;
+}
+
+.open-btn:disabled::after {
+  display: none;
+}
+
+@keyframes sweep {
+  60%,
+  100% {
+    translate: 100% 0;
+  }
+}
+
+.stock-line {
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.next {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.next strong {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #c4b5fd;
+}
+
+/* ---------- Aide « ? » ---------- */
+
+.help {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+}
+
+.help-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.06);
+  color: #cbd5e1;
   cursor: pointer;
 }
 
-.shelf-item :deep(.pack) {
-  width: min(100%, 220px);
-  transition:
-    transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-    filter 0.35s;
+.help-btn:hover,
+.help-btn[aria-expanded='true'] {
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
 }
 
-.shelf-item:hover :deep(.pack),
-.shelf-item:focus-visible :deep(.pack) {
-  transform: translateY(-8px) rotate(-1.5deg);
+.help-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
-.shelf-item:active :deep(.pack) {
-  transform: translateY(-2px) scale(0.98);
-}
-
-.shelf-item:disabled {
-  cursor: progress;
-}
-
-.shelf-item.locked :deep(.pack) {
-  filter: grayscale(0.7) brightness(0.92);
-}
-
-.shelf-count {
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-
-.stock {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
-  padding: var(--space-4) var(--space-5);
-  border: 1px solid var(--accent);
+.help-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  width: min(300px, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-4);
+  border: 1px solid rgb(255 255 255 / 0.12);
   border-radius: var(--radius-lg);
-  background: var(--accent-soft);
+  background: #1e1b4b;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.5);
+  transform-origin: bottom right;
 }
 
-.stock.out {
-  border-color: var(--line);
-  background: var(--surface);
+.help-title {
+  font-weight: 600;
+  color: #fff;
 }
 
-.stock > svg {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  color: var(--accent);
+.help-text,
+.help-note {
+  margin-top: var(--space-1);
+  font-size: 12.5px;
+  color: #94a3b8;
 }
 
-.stock-count {
-  font: 500 24px var(--font-serif);
+.help-pop ul {
+  display: grid;
+  gap: 6px;
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.help-pop li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 13px;
+}
+
+.odds-pips {
+  display: flex;
+  gap: 4px;
+}
+
+.odds-pips i {
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  border: 1px solid color-mix(in srgb, var(--rarity) 60%, #fff);
+}
+
+.odds-pips i.on {
+  background: color-mix(in srgb, var(--rarity) 60%, #fff);
+}
+
+.odds-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.pop-enter-active,
+.pop-leave-active {
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+
+.pop-enter-from,
+.pop-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+/* ---------- Aucune carte en jeu ---------- */
+
+.empty {
+  place-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+  color: #94a3b8;
+}
+
+.empty h2 {
+  font-size: 28px;
+  color: #fff;
+}
+
+.empty .row {
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--space-3);
 }
 
 .new-pill {
@@ -563,85 +886,13 @@ const hint = computed(() => {
   padding: 3px 10px;
   border-radius: 10px;
   background: var(--accent);
-  color: #1a1815;
+  color: #fff;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.3);
-}
-
-.odds {
-  max-width: 560px;
-  margin-top: var(--space-6);
-}
-
-.odds h2 {
-  font-size: 24px;
-  font-weight: 500;
-  margin-bottom: var(--space-3);
-}
-
-.odds ul {
-  margin: 0 0 var(--space-3);
-  padding: 0;
-  list-style: none;
-}
-
-.odds li {
-  display: grid;
-  grid-template-columns: 70px 1fr auto;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 6px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.odds-pips {
-  display: flex;
-  gap: 5px;
-}
-
-.odds-pips i {
-  width: 7px;
-  height: 7px;
-  transform: rotate(45deg);
-  border: 1px solid var(--rarity);
-}
-
-.odds-pips i.on {
-  background: var(--rarity);
-}
-
-.odds-value {
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-2);
-}
-
-.odds .muted {
-  font-size: 12px;
-}
-
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-7) 0;
-  text-align: center;
-  border-top: 1px solid var(--line);
-}
-
-.empty h2 {
-  font-size: 30px;
-  font-weight: 500;
-}
-
-.empty .row {
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: var(--space-3);
 }
 
 /* ---------- Scène d'ouverture ---------- */
@@ -652,9 +903,8 @@ const hint = computed(() => {
   z-index: 200;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(70% 55% at 50% 45%, rgb(60 54 44 / 0.9), transparent 70%), rgb(20 18 16);
-  color: #ece6da;
+  background: radial-gradient(70% 55% at 50% 45%, rgb(76 29 149 / 0.75), transparent 70%), #0f172a;
+  color: #e2e8f0;
   overflow: hidden;
 }
 
@@ -673,7 +923,7 @@ const hint = computed(() => {
   top: calc(var(--space-4) + env(safe-area-inset-top));
   right: var(--space-4);
   z-index: 60;
-  color: #ece6da;
+  color: #e2e8f0;
 }
 
 .close:hover {
@@ -683,18 +933,18 @@ const hint = computed(() => {
 .stage .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #1a1815;
+  color: #fff;
 }
 
 .stage .btn-primary:hover {
-  background: #bb9440;
-  border-color: #bb9440;
+  background: #7c3aed;
+  border-color: #7c3aed;
 }
 
 .on-dark {
   background: transparent;
   border-color: rgb(255 255 255 / 0.22);
-  color: #ece6da;
+  color: #e2e8f0;
 }
 
 .on-dark:hover {
@@ -812,8 +1062,8 @@ const hint = computed(() => {
 }
 
 .hint {
-  font: italic 500 19px var(--font-serif);
-  color: #b9b1a3;
+  font: 400 15px var(--font-display);
+  color: #94a3b8;
   animation: breathe 2.6s ease-in-out infinite;
 }
 
@@ -826,7 +1076,7 @@ const hint = computed(() => {
 .progress {
   font-size: 11px;
   letter-spacing: 0.16em;
-  color: #8f877a;
+  color: #64748b;
 }
 
 /* ---------- Récapitulatif ---------- */
@@ -891,22 +1141,9 @@ const hint = computed(() => {
 }
 
 @media (max-width: 860px) {
-  .boosters {
-    padding: var(--space-5) var(--space-4) var(--space-6);
-  }
-
-  .intro {
-    margin-bottom: var(--space-4);
-  }
-
-  .intro h1 {
-    font-size: 40px;
-  }
-
-  .shelf {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-5) var(--space-3);
-    padding: var(--space-5) 0;
+  .hero {
+    gap: var(--space-5);
+    padding-bottom: calc(var(--space-7) + var(--space-4));
   }
 
   .close {
@@ -960,7 +1197,11 @@ const hint = computed(() => {
   .pack-slot,
   .phase-opening .rise,
   .summary-card,
-  .hint {
+  .hint,
+  .rays,
+  .halo,
+  .hero-pack,
+  .open-btn::after {
     animation: none;
   }
 

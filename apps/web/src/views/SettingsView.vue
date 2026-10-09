@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Gift, Save } from 'lucide-vue-next'
-import type { BoosterSettings } from '@axomaster/card-model'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { Save } from 'lucide-vue-next'
+import type { BoosterSettings, GiftBoostersRequest } from '@axomaster/card-model'
 import { get, post, put, errorMessage } from '@/api/client'
 import { useToast } from '@/composables/useToast'
+import GiftForm from '@/components/players/GiftForm.vue'
 
 const toast = useToast()
 
 const settings = ref<BoosterSettings | null>(null)
 const saved = ref('')
 const saving = ref(false)
-const giftCount = ref(1)
 const gifting = ref(false)
+const giftForm = useTemplateRef('giftForm')
 
 /** Périodes proposées, en secondes. */
 const PRESETS = [
@@ -54,12 +55,13 @@ async function save() {
   }
 }
 
-async function giftAll() {
-  const n = giftCount.value
+async function giftAll(request: Required<GiftBoostersRequest>) {
+  const n = request.count
   if (!confirm(`Offrir ${n} booster${n > 1 ? 's' : ''} à chaque joueur ?`)) return
   gifting.value = true
   try {
-    const { players } = await post<{ players: number }>('admin/boosters/gift-all', { count: n })
+    const { players } = await post<{ players: number }>('admin/boosters/gift-all', request)
+    giftForm.value?.reset()
     toast.show(
       `${n} booster${n > 1 ? 's' : ''} offert${n > 1 ? 's' : ''} à ${players} joueur${players > 1 ? 's' : ''}`,
     )
@@ -73,15 +75,8 @@ async function giftAll() {
 
 <template>
   <div class="page">
-    <p class="eyebrow">Administration</p>
-    <h1>Réglages</h1>
-
     <section class="block">
       <h2>Boosters gratuits</h2>
-      <p class="muted">
-        Chaque joueur reçoit un booster à intervalle régulier. Les boosters non ouverts s’accumulent
-        jusqu’à la réserve maximale.
-      </p>
 
       <form v-if="settings" class="form" @submit.prevent="save">
         <div class="field">
@@ -124,26 +119,15 @@ async function giftAll() {
     <section class="block">
       <h2>Offrir des boosters</h2>
       <p class="muted">
-        Crédite immédiatement chaque compte actif. Ces boosters s’ajoutent à la réserve et
-        n’expirent pas.
+        Pour chaque compte actif, sans expiration. Pour un seul joueur : page Joueurs.
       </p>
-      <form class="form gift" @submit.prevent="giftAll">
-        <div class="field">
-          <label for="gift-count">Nombre par joueur</label>
-          <input
-            id="gift-count"
-            v-model.number="giftCount"
-            class="input"
-            type="number"
-            min="1"
-            max="20"
-            required
-          />
-        </div>
-        <button class="btn btn-primary" type="submit" :disabled="gifting">
-          <Gift /> Offrir un booster à tous
-        </button>
-      </form>
+      <GiftForm
+        ref="giftForm"
+        id-prefix="gift-all"
+        submit-label="Offrir à tous les joueurs"
+        :busy="gifting"
+        @submit="giftAll"
+      />
     </section>
   </div>
 </template>
@@ -152,18 +136,17 @@ async function giftAll() {
 .page {
   max-width: 720px;
   margin: 0 auto;
-  padding: var(--space-7) var(--space-6);
-}
-
-h1 {
-  font-size: 52px;
-  font-weight: 500;
-  margin-bottom: var(--space-5);
+  padding: var(--space-5) var(--space-6) var(--space-7);
 }
 
 .block {
   padding: var(--space-5) 0;
   border-top: 1px solid var(--line);
+}
+
+.block:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .block h2 {
@@ -183,11 +166,6 @@ h1 {
   gap: var(--space-3);
 }
 
-.form.gift {
-  grid-template-columns: 180px auto;
-  justify-content: start;
-}
-
 .form .field {
   margin: 0;
 }
@@ -197,12 +175,7 @@ h1 {
     padding: var(--space-5) var(--space-4) var(--space-6);
   }
 
-  h1 {
-    font-size: 40px;
-  }
-
-  .form,
-  .form.gift {
+  .form {
     grid-template-columns: 1fr;
   }
 }

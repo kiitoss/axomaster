@@ -1,9 +1,23 @@
-import { Hono } from 'hono'
-import { createTradeRequestSchema, type Trade, type TradeStatus } from '@axomaster/card-model'
+import { Hono, type Context } from 'hono'
+import {
+  createTradeRequestSchema,
+  tradeRequestNotification,
+  tradeResolvedNotification,
+  type Trade,
+  type TradeOutcome,
+  type TradeStatus,
+} from '@axomaster/card-model'
 import type { AppEnv } from '../env'
 import { requireUser } from '../lib/auth'
-import { cardsByIds, inventoryDelta, isConstraintError, ownedQuantities } from '../lib/db'
+import {
+  cardsByIds,
+  inventoryDelta,
+  isConstraintError,
+  ownedQuantities,
+  shareCard,
+} from '../lib/db'
 import { HttpError, nowIso, placeholders, readJson } from '../lib/http'
+import { notifyUsers } from '../lib/notify'
 
 interface TradeRow {
   id: string
@@ -41,8 +55,11 @@ async function assertOwns(
   }
 }
 
-/** Charge des échanges complets (joueurs et cartes). */
-async function loadTrades(db: D1Database, rows: TradeRow[]): Promise<Trade[]> {
+/**
+ * Charge des échanges complets (joueurs et cartes), vus par `viewerId` : les cartes qu'il ne
+ * possède pas restent face cachée, même s'il les demande ou si on les lui propose.
+ */
+async function loadTrades(db: D1Database, rows: TradeRow[], viewerId: string): Promise<Trade[]> {
   if (!rows.length) return []
   const ids = rows.map((r) => r.id)
   const { results: items } = await db
@@ -55,16 +72,17 @@ async function loadTrades(db: D1Database, rows: TradeRow[]): Promise<Trade[]> {
     .bind(...userIds)
     .all<{ id: string; display_name: string }>()
   const names = new Map(users.map((u) => [u.id, u.display_name]))
-  const cards = await cardsByIds(
-    db,
-    items.map((i) => i.card_id),
-  )
+  const cardIds = items.map((i) => i.card_id)
+  const [cards, mine] = await Promise.all([
+    cardsByIds(db, cardIds),
+    ownedQuantities(db, viewerId, cardIds),
+  ])
 
   return rows.map((row) => {
     const side = (s: ItemRow['side']) =>
       items
         .filter((i) => i.trade_id === row.id && i.side === s && cards.has(i.card_id))
-        .map((i) => ({ card: cards.get(i.card_id)!, quantity: i.quantity }))
+        .map((i) => shareCard(cards.get(i.card_id)!, i.quantity, (mine.get(i.card_id) ?? 0) > 0))
     return {
       id: row.id,
       from: { id: row.from_user, displayName: names.get(row.from_user) ?? 'Joueur supprimé' },
@@ -95,15 +113,29 @@ async function close(
 ) {
   const result = await db
     .prepare(
-      `UPDATE trades SET status = ?, resolved_at = ? WHERE id = ? AND ${column} = ? AND status = 'pending'`,
+      `UPDATE trades SET status = ?, resolved_at = ? WHERE id = ? AND ${column} = ? AND status = 'pending'
+       RETURNING *`,
     )
     .bind(status, nowIso(), id, userId)
-    .run()
-  if (!result.meta.changes) {
+    .first<TradeRow>()
+  if (!result) {
     const row = await getTradeRow(db, id)
     if (row[column] !== userId) throw new HttpError(403, 'Cet échange ne vous concerne pas')
     throw new HttpError(409, 'Cet échange a déjà été traité')
   }
+  return result
+}
+
+/** Prévient le proposeur de l'issue de son échange (en tâche de fond). */
+function notifyOutcome(
+  c: Context<AppEnv>,
+  row: TradeRow,
+  recipientName: string,
+  outcome: TradeOutcome,
+) {
+  c.executionCtx.waitUntil(
+    notifyUsers(c.env, [row.from_user], tradeResolvedNotification(row.id, recipientName, outcome)),
+  )
 }
 
 export const tradeRoutes = new Hono<AppEnv>()
@@ -117,7 +149,7 @@ export const tradeRoutes = new Hono<AppEnv>()
     )
       .bind(userId)
       .all<TradeRow>()
-    return c.json(await loadTrades(c.env.DB, results))
+    return c.json(await loadTrades(c.env.DB, results, userId))
   })
 
   .post('/', async (c) => {
@@ -162,14 +194,22 @@ export const tradeRoutes = new Hono<AppEnv>()
           .bind(id, side, cardId, quantity),
       ),
     ])
-    const [trade] = await loadTrades(db, [await getTradeRow(db, id)])
+    const [trade] = await loadTrades(db, [await getTradeRow(db, id)], me.id)
+    c.executionCtx.waitUntil(
+      notifyUsers(
+        c.env,
+        [input.toUserId],
+        tradeRequestNotification(id, me.displayName, input.message),
+      ),
+    )
     return c.json(trade, 201)
   })
 
   .post('/:id/accept', async (c) => {
     const db = c.env.DB
     const id = c.req.param('id')
-    const userId = c.get('user').id
+    const me = c.get('user')
+    const userId = me.id
     const row = await getTradeRow(db, id)
     if (row.to_user !== userId) throw new HttpError(403, 'Seul le destinataire peut accepter')
     if (row.status !== 'pending') throw new HttpError(409, 'Cet échange a déjà été traité')
@@ -209,18 +249,22 @@ export const tradeRoutes = new Hono<AppEnv>()
         )
         .bind(now, id)
         .run()
+      notifyOutcome(c, row, me.displayName, 'failed')
       throw new HttpError(
         409,
         'Échange impossible : l’un de vous ne possède plus les cartes prévues',
       )
     }
 
-    const [trade] = await loadTrades(db, [await getTradeRow(db, id)])
+    notifyOutcome(c, row, me.displayName, 'accepted')
+    const [trade] = await loadTrades(db, [await getTradeRow(db, id)], userId)
     return c.json(trade)
   })
 
   .post('/:id/decline', async (c) => {
-    await close(c.env.DB, c.req.param('id'), 'declined', 'to_user', c.get('user').id)
+    const me = c.get('user')
+    const row = await close(c.env.DB, c.req.param('id'), 'declined', 'to_user', me.id)
+    notifyOutcome(c, row, me.displayName, 'declined')
     return c.body(null, 204)
   })
 

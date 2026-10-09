@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { OwnedCard } from '@axomaster/card-model'
+import type { Card, SharedCard } from '@axomaster/card-model'
 import { useCollectionStore } from '@/stores/collection'
 import { useTradesStore } from '@/stores/trades'
 import { useToast } from '@/composables/useToast'
 import { errorMessage } from '@/api/client'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
+import CardViewer from '@/components/gallery/CardViewer.vue'
 import CardPicker from './CardPicker.vue'
 
 const props = defineProps<{ open: boolean }>()
@@ -16,16 +17,20 @@ const trades = useTradesStore()
 const toast = useToast()
 
 const partnerId = ref('')
-const partnerCards = ref<OwnedCard[]>([])
+const partnerCards = ref<SharedCard[]>([])
 const loadingPartner = ref(false)
 const offer = ref<Record<string, number>>({})
 const request = ref<Record<string, number>>({})
 const message = ref('')
 const busy = ref(false)
 
+/** Carte agrandie, avec ses voisines du même côté pour naviguer. */
+const zoom = ref<{ cards: Card[]; index: number } | null>(null)
+
 watch(
   () => props.open,
   async (open) => {
+    zoom.value = null
     if (!open) return
     partnerId.value = ''
     partnerCards.value = []
@@ -56,6 +61,28 @@ watch(partnerId, async (id) => {
     loadingPartner.value = false
   }
 })
+
+/** Mes cartes, toujours visibles. */
+const myCards = computed<SharedCard[]>(() =>
+  collection.inventory.map(({ card, quantity }) => ({
+    id: card.id,
+    number: card.number,
+    categoryId: card.categoryId,
+    quantity,
+    card,
+  })),
+)
+
+function openZoom(items: SharedCard[], card: Card) {
+  const cards = items.flatMap((item) => (item.card ? [item.card] : []))
+  zoom.value = {
+    cards,
+    index: Math.max(
+      0,
+      cards.findIndex((c) => c.id === card.id),
+    ),
+  }
+}
 
 const count = (selection: Record<string, number>) =>
   Object.values(selection).reduce((sum, n) => sum + n, 0)
@@ -111,8 +138,9 @@ async function submit() {
         </h3>
         <CardPicker
           v-model="offer"
-          :items="collection.inventory"
+          :items="myCards"
           empty="Vous n’avez encore aucune carte à proposer."
+          @zoom="openZoom(myCards, $event)"
         />
       </section>
       <section>
@@ -126,6 +154,7 @@ async function submit() {
           v-model="request"
           :items="partnerCards"
           empty="Ce joueur n’a encore aucune carte."
+          @zoom="openZoom(partnerCards, $event)"
         />
       </section>
     </div>
@@ -140,6 +169,15 @@ async function submit() {
       <label for="trade-message">Message (facultatif)</label>
       <textarea id="trade-message" v-model="message" class="textarea" rows="2" maxlength="280" />
     </div>
+
+    <CardViewer
+      v-if="zoom"
+      v-model:index="zoom.index"
+      :cards="zoom.cards"
+      readonly
+      inline
+      @close="zoom = null"
+    />
 
     <template #footer>
       <button class="btn" type="button" @click="emit('close')">Annuler</button>

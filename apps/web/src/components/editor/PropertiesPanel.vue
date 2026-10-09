@@ -28,7 +28,8 @@ const card = computed(() => draft.value)
 const number = computed({
   get: () => draft.value.number ?? '',
   set: (v: number | string) => {
-    draft.value.number = v === '' || Number.isNaN(Number(v)) ? null : Math.max(0, Math.round(Number(v)))
+    draft.value.number =
+      v === '' || Number.isNaN(Number(v)) ? null : Math.max(0, Math.round(Number(v)))
   },
 })
 
@@ -84,15 +85,34 @@ const WEIGHTS = [
 
       <div class="field">
         <label for="card-name">Nom</label>
-        <input id="card-name" v-model="card.name" class="input" maxlength="120" placeholder="Prénom Nom ou nom de l'événement" />
+        <input
+          id="card-name"
+          v-model="card.name"
+          class="input"
+          maxlength="120"
+          placeholder="Prénom Nom ou nom de l'événement"
+        />
       </div>
       <div class="field">
         <label for="card-subtitle">Sous-titre</label>
-        <input id="card-subtitle" v-model="card.subtitle" class="input" maxlength="160" placeholder="Poste, date, lieu…" />
+        <input
+          id="card-subtitle"
+          v-model="card.subtitle"
+          class="input"
+          maxlength="160"
+          placeholder="Poste, date, lieu…"
+        />
       </div>
       <div class="field">
         <label for="card-desc">Description</label>
-        <textarea id="card-desc" v-model="card.description" class="textarea" maxlength="1000" rows="4" placeholder="Une phrase d'ambiance, une anecdote…" />
+        <textarea
+          id="card-desc"
+          v-model="card.description"
+          class="textarea"
+          maxlength="1000"
+          rows="4"
+          placeholder="Une phrase d'ambiance, une anecdote…"
+        />
         <span class="counter muted">{{ card.description.length }} / 220 conseillés</span>
       </div>
 
@@ -107,8 +127,21 @@ const WEIGHTS = [
         <div class="field">
           <label for="card-number">Numéro</label>
           <div class="row">
-            <input id="card-number" v-model="number" class="input" type="number" min="0" max="9999" placeholder="—" />
-            <button class="btn btn-icon" type="button" title="Numéro suivant dans la collection" @click="autoNumber">
+            <input
+              id="card-number"
+              v-model="number"
+              class="input"
+              type="number"
+              min="0"
+              max="9999"
+              placeholder="—"
+            />
+            <button
+              class="btn btn-icon"
+              type="button"
+              title="Numéro suivant dans la collection"
+              @click="autoNumber"
+            >
               <Wand2 />
             </button>
           </div>
@@ -169,7 +202,11 @@ const WEIGHTS = [
           <input v-model.number="card.photo.y" type="range" min="0" max="100" step="0.5" />
         </div>
         <div class="row">
-          <button class="btn btn-sm" type="button" @click="Object.assign(card.photo, { x: 50, y: 50, scale: 1 })">
+          <button
+            class="btn btn-sm"
+            type="button"
+            @click="Object.assign(card.photo, { x: 50, y: 50, scale: 1 })"
+          >
             <RotateCcw /> Recentrer
           </button>
           <button class="btn btn-sm btn-danger" type="button" @click="card.photo.imageId = null">
@@ -177,7 +214,8 @@ const WEIGHTS = [
           </button>
         </div>
         <p class="muted tip">
-          Astuce : glissez directement sur la photo pour la recadrer, molette ou pincement pour zoomer.
+          Astuce : glissez directement sur la photo pour la recadrer, molette ou pincement pour
+          zoomer.
         </p>
       </template>
     </template>
@@ -188,7 +226,12 @@ const WEIGHTS = [
         <p class="eyebrow">
           {{ { text: 'Texte', image: 'Image', shape: 'Forme' }[selectedLayer.type] }}
         </p>
-        <input v-model="selectedLayer.name" class="title-input" maxlength="80" aria-label="Nom du calque" />
+        <input
+          v-model="selectedLayer.name"
+          class="title-input"
+          maxlength="80"
+          aria-label="Nom du calque"
+        />
       </header>
 
       <template v-if="selectedLayer.type === 'text'">
@@ -200,11 +243,30 @@ const WEIGHTS = [
           <div class="field">
             <span class="label">Police</span>
             <div class="segmented">
-              <button type="button" class="serif" :class="{ active: selectedLayer.font === 'serif' }" @click="selectedLayer.font = 'serif'">Serif</button>
-              <button type="button" :class="{ active: selectedLayer.font === 'sans' }" @click="selectedLayer.font = 'sans'">Sans</button>
+              <button
+                type="button"
+                class="serif"
+                :class="{ active: selectedLayer.font === 'serif' }"
+                @click="selectedLayer.font = 'serif'"
+              >
+                Serif
+              </button>
+              <button
+                type="button"
+                :class="{ active: selectedLayer.font === 'sans' }"
+                @click="selectedLayer.font = 'sans'"
+              >
+                Sans
+              </button>
             </div>
           </div>
-          <NumberField v-model="selectedLayer.size" label="Taille" :min="4" :max="400" suffix="px" />
+          <NumberField
+            v-model="selectedLayer.size"
+            label="Taille"
+            :min="4"
+            :max="400"
+            suffix="px"
+          />
         </div>
         <div class="grid-2">
           <div class="field">
@@ -216,14 +278,42 @@ const WEIGHTS = [
           <div class="field">
             <span class="label">Alignement</span>
             <div class="segmented">
-              <button type="button" title="Gauche" :class="{ active: selectedLayer.align === 'left' }" @click="selectedLayer.align = 'left'"><AlignLeft /></button>
-              <button type="button" title="Centre" :class="{ active: selectedLayer.align === 'center' }" @click="selectedLayer.align = 'center'"><AlignCenter /></button>
-              <button type="button" title="Droite" :class="{ active: selectedLayer.align === 'right' }" @click="selectedLayer.align = 'right'"><AlignRight /></button>
+              <button
+                type="button"
+                title="Gauche"
+                :class="{ active: selectedLayer.align === 'left' }"
+                @click="selectedLayer.align = 'left'"
+              >
+                <AlignLeft />
+              </button>
+              <button
+                type="button"
+                title="Centre"
+                :class="{ active: selectedLayer.align === 'center' }"
+                @click="selectedLayer.align = 'center'"
+              >
+                <AlignCenter />
+              </button>
+              <button
+                type="button"
+                title="Droite"
+                :class="{ active: selectedLayer.align === 'right' }"
+                @click="selectedLayer.align = 'right'"
+              >
+                <AlignRight />
+              </button>
             </div>
           </div>
         </div>
         <div class="grid-2">
-          <NumberField v-model="selectedLayer.letterSpacing" label="Interlettrage" :min="-0.2" :max="1" :step="0.01" suffix="em" />
+          <NumberField
+            v-model="selectedLayer.letterSpacing"
+            label="Interlettrage"
+            :min="-0.2"
+            :max="1"
+            :step="0.01"
+            suffix="em"
+          />
           <div class="field">
             <span class="label">Style</span>
             <div class="checks">
@@ -236,30 +326,69 @@ const WEIGHTS = [
       </template>
 
       <template v-else-if="selectedLayer.type === 'image'">
-        <button class="btn btn-sm" type="button" @click="replaceLayerImage"><ImagePlus /> Remplacer l’image</button>
+        <button class="btn btn-sm" type="button" @click="replaceLayerImage">
+          <ImagePlus /> Remplacer l’image
+        </button>
         <div class="grid-2">
           <div class="field">
             <span class="label">Ajustement</span>
             <div class="segmented">
-              <button type="button" :class="{ active: selectedLayer.fit === 'contain' }" @click="selectedLayer.fit = 'contain'">Contenir</button>
-              <button type="button" :class="{ active: selectedLayer.fit === 'cover' }" @click="selectedLayer.fit = 'cover'">Remplir</button>
+              <button
+                type="button"
+                :class="{ active: selectedLayer.fit === 'contain' }"
+                @click="selectedLayer.fit = 'contain'"
+              >
+                Contenir
+              </button>
+              <button
+                type="button"
+                :class="{ active: selectedLayer.fit === 'cover' }"
+                @click="selectedLayer.fit = 'cover'"
+              >
+                Remplir
+              </button>
             </div>
           </div>
-          <NumberField v-model="selectedLayer.radius" label="Arrondi" :min="0" :max="50" suffix="px" />
+          <NumberField
+            v-model="selectedLayer.radius"
+            label="Arrondi"
+            :min="0"
+            :max="50"
+            suffix="px"
+          />
         </div>
       </template>
 
       <template v-else-if="selectedLayer.type === 'shape'">
         <template v-if="selectedLayer.shape === 'line'">
           <ColorField v-model="selectedLayer.stroke" label="Couleur" />
-          <NumberField v-model="selectedLayer.strokeWidth" label="Épaisseur" :min="1" :max="100" suffix="px" />
+          <NumberField
+            v-model="selectedLayer.strokeWidth"
+            label="Épaisseur"
+            :min="1"
+            :max="100"
+            suffix="px"
+          />
         </template>
         <template v-else>
           <ColorField v-model="selectedLayer.fill" label="Remplissage" allow-none />
           <ColorField v-model="selectedLayer.stroke" label="Contour" allow-none />
           <div class="grid-2">
-            <NumberField v-model="selectedLayer.strokeWidth" label="Épaisseur" :min="0" :max="100" suffix="px" />
-            <NumberField v-if="selectedLayer.shape === 'rect'" v-model="selectedLayer.radius" label="Arrondi" :min="0" :max="50" suffix="px" />
+            <NumberField
+              v-model="selectedLayer.strokeWidth"
+              label="Épaisseur"
+              :min="0"
+              :max="100"
+              suffix="px"
+            />
+            <NumberField
+              v-if="selectedLayer.shape === 'rect'"
+              v-model="selectedLayer.radius"
+              label="Arrondi"
+              :min="0"
+              :max="50"
+              suffix="px"
+            />
           </div>
         </template>
       </template>
@@ -271,7 +400,13 @@ const WEIGHTS = [
         <NumberField v-model="selectedLayer.y" label="Y" :step="0.5" suffix="%" />
         <NumberField v-model="selectedLayer.w" label="Largeur" :min="0" :step="0.5" suffix="%" />
         <NumberField v-model="selectedLayer.h" label="Hauteur" :min="0" :step="0.5" suffix="%" />
-        <NumberField v-model="selectedLayer.rotation" label="Rotation" :min="-360" :max="360" suffix="°" />
+        <NumberField
+          v-model="selectedLayer.rotation"
+          label="Rotation"
+          :min="-360"
+          :max="360"
+          suffix="°"
+        />
         <div class="field">
           <span class="label">Opacité · {{ Math.round(selectedLayer.opacity * 100) }} %</span>
           <input v-model.number="selectedLayer.opacity" type="range" min="0" max="1" step="0.01" />
@@ -279,8 +414,12 @@ const WEIGHTS = [
       </div>
 
       <div class="row actions">
-        <button class="btn btn-sm" type="button" @click="duplicateLayer(selectedLayer.id)"><Copy /> Dupliquer</button>
-        <button class="btn btn-sm btn-danger" type="button" @click="removeLayer(selectedLayer.id)"><Trash2 /> Supprimer</button>
+        <button class="btn btn-sm" type="button" @click="duplicateLayer(selectedLayer.id)">
+          <Copy /> Dupliquer
+        </button>
+        <button class="btn btn-sm btn-danger" type="button" @click="removeLayer(selectedLayer.id)">
+          <Trash2 /> Supprimer
+        </button>
       </div>
     </template>
   </div>
@@ -305,7 +444,8 @@ header h3 {
   border: 0;
   border-bottom: 1px solid transparent;
   background: transparent;
-  font: 500 26px var(--font-serif);
+  font: 700 24px var(--font-display);
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 

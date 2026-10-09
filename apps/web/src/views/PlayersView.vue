@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { KeyRound, UserPlus } from 'lucide-vue-next'
-import type { AdminUser, Role } from '@axomaster/card-model'
+import { BookOpen, Gift, KeyRound, List, Table2, UserPlus } from 'lucide-vue-next'
+import type { AdminUser, GiftBoostersRequest, Role } from '@axomaster/card-model'
 import { get, patch, post, errorMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import PlayerCollection from '@/components/players/PlayerCollection.vue'
+import PlayerAvatar from '@/components/players/PlayerAvatar.vue'
+import OwnershipMatrix from '@/components/players/OwnershipMatrix.vue'
+import GiftForm from '@/components/players/GiftForm.vue'
+import BaseDialog from '@/components/ui/BaseDialog.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -14,6 +19,13 @@ const loading = ref(true)
 
 const form = ref({ username: '', displayName: '', password: '', role: 'player' as Role })
 const creating = ref(false)
+/** Liste des comptes ou tableau joueurs × cartes. */
+const mode = ref<'list' | 'matrix'>('list')
+/** Joueur dont on consulte la collection. */
+const viewing = ref<AdminUser | null>(null)
+/** Joueur à qui l'on offre des boosters. */
+const gifting = ref<AdminUser | null>(null)
+const giftBusy = ref(false)
 
 async function load() {
   try {
@@ -69,6 +81,23 @@ function toggleRole(user: AdminUser) {
   if (confirm(`Faire de ${user.displayName} un ${label} ?`)) update(user, { role }, 'Rôle modifié')
 }
 
+async function gift(request: Required<GiftBoostersRequest>) {
+  const user = gifting.value
+  if (!user) return
+  giftBusy.value = true
+  try {
+    await post(`admin/users/${encodeURIComponent(user.id)}/boosters/gift`, request)
+    const n = request.count
+    toast.show(`${n} booster${n > 1 ? 's' : ''} offert${n > 1 ? 's' : ''} à ${user.displayName}`)
+    gifting.value = null
+    await load()
+  } catch (err) {
+    toast.error(errorMessage(err))
+  } finally {
+    giftBusy.value = false
+  }
+}
+
 function toggleDisabled(user: AdminUser) {
   const disabled = !user.disabled
   if (disabled && !confirm(`Désactiver le compte de ${user.displayName} ?`)) return
@@ -77,15 +106,19 @@ function toggleDisabled(user: AdminUser) {
 </script>
 
 <template>
-  <div class="page">
-    <p class="eyebrow">Administration</p>
-    <h1>Joueurs</h1>
-    <p class="muted lead">
-      Les comptes sont créés ici en attendant la connexion Microsoft. Chaque nouveau joueur reçoit
-      un booster dès sa première connexion.
-    </p>
+  <div class="page" :class="{ wide: mode === 'matrix' }">
+    <div class="segmented modes" role="group" aria-label="Affichage">
+      <button type="button" :class="{ active: mode === 'list' }" @click="mode = 'list'">
+        <List /> Comptes
+      </button>
+      <button type="button" :class="{ active: mode === 'matrix' }" @click="mode = 'matrix'">
+        <Table2 /> Tableau des cartes
+      </button>
+    </div>
 
-    <form class="create" @submit.prevent="create">
+    <OwnershipMatrix v-if="mode === 'matrix' && !loading" :users="users" @view="viewing = $event" />
+
+    <form v-if="mode === 'list'" class="create" @submit.prevent="create">
       <div class="field">
         <label for="user-username">Identifiant</label>
         <input
@@ -134,8 +167,9 @@ function toggleDisabled(user: AdminUser) {
 
     <p v-if="loading" class="muted">Chargement…</p>
 
-    <ul v-else class="list">
+    <ul v-else-if="mode === 'list'" class="list">
       <li v-for="user in users" :key="user.id" class="item" :class="{ disabled: user.disabled }">
+        <PlayerAvatar :id="user.id" :name="user.displayName" :size="36" />
         <div class="who">
           <button class="name" type="button" title="Renommer" @click="rename(user)">
             {{ user.displayName }}
@@ -145,7 +179,13 @@ function toggleDisabled(user: AdminUser) {
             <template v-if="user.disabled"> · désactivé</template>
           </span>
         </div>
-        <div class="stats muted">
+        <button
+          class="stats"
+          type="button"
+          title="Voir les cartes débloquées et manquantes"
+          @click="viewing = user"
+        >
+          <BookOpen />
           {{ user.distinctCards }} carte{{ user.distinctCards > 1 ? 's' : '' }} ·
           {{ user.totalCards }} ex.
           <template v-if="user.bonusBoosters">
@@ -153,8 +193,18 @@ function toggleDisabled(user: AdminUser) {
               user.bonusBoosters > 1 ? 's' : ''
             }}
           </template>
-        </div>
+        </button>
         <div class="actions">
+          <button
+            v-if="!user.disabled"
+            class="btn btn-ghost btn-icon btn-sm"
+            type="button"
+            title="Offrir des boosters"
+            aria-label="Offrir des boosters"
+            @click="gifting = user"
+          >
+            <Gift />
+          </button>
           <button
             class="btn btn-ghost btn-icon btn-sm"
             type="button"
@@ -175,6 +225,24 @@ function toggleDisabled(user: AdminUser) {
         </div>
       </li>
     </ul>
+
+    <PlayerCollection :user="viewing" @close="viewing = null" />
+
+    <BaseDialog
+      :open="!!gifting"
+      :title="gifting ? `Offrir des boosters à ${gifting.displayName}` : ''"
+      width="720px"
+      @close="gifting = null"
+    >
+      <GiftForm
+        v-if="gifting"
+        :key="gifting.id"
+        id-prefix="player-gift"
+        submit-label="Offrir"
+        :busy="giftBusy"
+        @submit="gift"
+      />
+    </BaseDialog>
   </div>
 </template>
 
@@ -182,17 +250,22 @@ function toggleDisabled(user: AdminUser) {
 .page {
   max-width: 960px;
   margin: 0 auto;
-  padding: var(--space-7) var(--space-6);
+  padding: var(--space-5) var(--space-6) var(--space-7);
 }
 
-h1 {
-  font-size: 52px;
-  font-weight: 500;
+/* Le tableau des cartes profite de toute la largeur disponible. */
+.page.wide {
+  max-width: 1600px;
 }
 
-.lead {
-  max-width: 560px;
-  margin: var(--space-2) 0 var(--space-6);
+.modes {
+  margin-bottom: var(--space-5);
+}
+
+.modes button {
+  height: 32px;
+  white-space: nowrap;
+  padding: 0 var(--space-3);
 }
 
 .create {
@@ -220,7 +293,7 @@ h1 {
 
 .item {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-3) 0;
@@ -242,7 +315,7 @@ h1 {
   padding: 0;
   border: 0;
   background: none;
-  font: 500 20px var(--font-serif);
+  font: 600 16px var(--font-display);
   color: var(--ink);
   cursor: pointer;
 }
@@ -252,9 +325,32 @@ h1 {
   text-decoration-color: var(--line-strong);
 }
 
-.who .muted,
-.stats {
+.who .muted {
   font-size: 12px;
+}
+
+.stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font: 500 12px var(--font-sans);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.stats:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.stats svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
 }
 
 .actions {
@@ -267,21 +363,27 @@ h1 {
     padding: var(--space-5) var(--space-4) var(--space-6);
   }
 
-  h1 {
-    font-size: 40px;
-  }
-
   .create {
     grid-template-columns: 1fr;
   }
 
   .item {
-    grid-template-columns: 1fr;
-    gap: var(--space-2);
+    grid-template-columns: auto 1fr;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .stats,
+  .actions {
+    grid-column: 1 / -1;
   }
 
   .actions {
     flex-wrap: wrap;
+  }
+
+  .stats {
+    justify-self: start;
+    min-height: 36px;
   }
 }
 </style>

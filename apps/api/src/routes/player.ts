@@ -1,15 +1,13 @@
 import { Hono } from 'hono'
 import {
-  BOOSTER_POOL_ALL,
   boosterStock,
   consumeBooster,
   drawBooster,
-  openBoosterRequestSchema,
-  type BoosterOffer,
   type Boosters,
   type Card,
   type CatalogueEntry,
   type Category,
+  type Leaderboard,
   type OpenBoosterResponse,
 } from '@axomaster/card-model'
 import type { AppEnv } from '../env'
@@ -20,9 +18,10 @@ import {
   ownedCards,
   ownedQuantities,
   parseCard,
+  playerCardsFor,
   type CardRow,
 } from '../lib/db'
-import { HttpError, readJson } from '../lib/http'
+import { HttpError } from '../lib/http'
 import { imageStorage } from '../lib/images'
 import { loadSettings } from '../lib/settings'
 
@@ -79,36 +78,20 @@ export const playerRoutes = new Hono<AppEnv>()
 
   .get('/boosters', async (c) => {
     const db = c.env.DB
-    const [settings, quota, cards, categories] = await Promise.all([
+    const [settings, quota, cards] = await Promise.all([
       loadSettings(db),
       quotaRow(db, c.get('user').id),
       publishedCards(db),
-      listCategories(db),
     ])
-    const offers: BoosterOffer[] = []
-    if (cards.length)
-      offers.push({
-        pool: BOOSTER_POOL_ALL,
-        title: 'Toutes les cartes',
-        color: '#a8832f',
-        cardCount: cards.length,
-      })
-    for (const category of categories) {
-      const count = cards.filter((card) => card.categoryId === category.id).length
-      if (count)
-        offers.push({
-          pool: category.id,
-          title: category.name,
-          color: category.color,
-          cardCount: count,
-        })
+    const body: Boosters = {
+      stock: boosterStock(quota, settings),
+      size: settings.size,
+      cardCount: cards.length,
     }
-    const body: Boosters = { stock: boosterStock(quota, settings), size: settings.size, offers }
     return c.json(body)
   })
 
   .post('/boosters/open', async (c) => {
-    const { pool } = await readJson(c, openBoosterRequestSchema)
     const db = c.env.DB
     const userId = c.get('user').id
     const now = new Date()
@@ -121,11 +104,9 @@ export const playerRoutes = new Hono<AppEnv>()
     const consumed = consumeBooster(quota, settings, now)
     if (!consumed) throw new HttpError(409, 'Aucun booster disponible pour le moment')
 
-    const candidates =
-      pool === BOOSTER_POOL_ALL ? published : published.filter((card) => card.categoryId === pool)
-    if (!candidates.length) throw new HttpError(404, 'Ce booster ne contient aucune carte')
+    if (!published.length) throw new HttpError(404, 'Aucune carte n’est encore en jeu')
 
-    const cards = drawBooster(candidates, { size: settings.size })
+    const cards = drawBooster(published, { size: settings.size })
     const before = await ownedQuantities(
       db,
       userId,
@@ -135,6 +116,7 @@ export const playerRoutes = new Hono<AppEnv>()
     for (const card of cards) counts.set(card.id, (counts.get(card.id) ?? 0) + 1)
 
     const iso = now.toISOString()
+    const stock = boosterStock(consumed.state, settings, now)
     try {
       await db.batch([
         // Garde anti double-ouverture : si le quota a changé entre-temps, bonus_boosters passe à -1,
@@ -143,10 +125,19 @@ export const playerRoutes = new Hono<AppEnv>()
           .prepare(
             `UPDATE users SET
                booster_anchor = CASE WHEN booster_anchor = ?1 AND bonus_boosters = ?2 THEN ?3 ELSE booster_anchor END,
-               bonus_boosters = CASE WHEN booster_anchor = ?1 AND bonus_boosters = ?2 THEN ?4 ELSE -1 END
+               bonus_boosters = CASE WHEN booster_anchor = ?1 AND bonus_boosters = ?2 THEN ?4 ELSE -1 END,
+               booster_notify_at = ?6
              WHERE id = ?5`,
           )
-          .bind(quota.anchor, quota.bonus, consumed.state.anchor, consumed.state.bonus, userId),
+          .bind(
+            quota.anchor,
+            quota.bonus,
+            consumed.state.anchor,
+            consumed.state.bonus,
+            userId,
+            // Prochaine recharge à notifier (cf. jobs/boosterRefills.ts).
+            stock.nextAt,
+          ),
         ...[...counts].flatMap(([cardId, n]) => inventoryDelta(db, userId, cardId, n, iso)),
         db
           .prepare(
@@ -155,7 +146,8 @@ export const playerRoutes = new Hono<AppEnv>()
           .bind(
             crypto.randomUUID(),
             userId,
-            pool,
+            // Colonne historique : il n'existe plus qu'un booster, tiré parmi toutes les cartes.
+            'all',
             JSON.stringify(cards.map((card) => card.id)),
             consumed.source,
             iso,
@@ -170,7 +162,7 @@ export const playerRoutes = new Hono<AppEnv>()
     const body: OpenBoosterResponse = {
       cards,
       newCardIds: [...counts.keys()].filter((id) => !before.get(id)),
-      stock: boosterStock(consumed.state, settings, now),
+      stock,
     }
     return c.json(body)
   })
@@ -185,8 +177,62 @@ export const playerRoutes = new Hono<AppEnv>()
       .all<{ id: string; display_name: string }>()
     return c.json(results.map((r) => ({ id: r.id, displayName: r.display_name })))
   })
-  .get('/players/:id/cards', async (c) => c.json(await ownedCards(c.env.DB, c.req.param('id'))))
+  .get('/players/:id/cards', async (c) =>
+    c.json(await playerCardsFor(c.env.DB, c.req.param('id'), c.get('user').id)),
+  )
   .get('/inventory', async (c) => c.json(await ownedCards(c.env.DB, c.get('user').id)))
+
+  // ---------- Classement ----------
+
+  /** Cartes publiées débloquées par chaque joueur actif (identifiants seulement). */
+  .get('/leaderboard', async (c) => {
+    const db = c.env.DB
+    const [cards, owned, users] = await db.batch([
+      db.prepare(
+        `SELECT id, number, category_id FROM cards WHERE status = 'published'
+         ORDER BY number IS NULL, number, id`,
+      ),
+      db.prepare(
+        `SELECT uc.user_id, uc.card_id FROM user_cards uc
+         JOIN cards c ON c.id = uc.card_id
+         WHERE uc.quantity > 0 AND c.status = 'published'`,
+      ),
+      db.prepare('SELECT id, display_name FROM users WHERE disabled = 0'),
+    ])
+    const cardRows = (cards?.results ?? []) as {
+      id: string
+      number: number | null
+      category_id: string | null
+    }[]
+    const ownedRows = (owned?.results ?? []) as { user_id: string; card_id: string }[]
+    const userRows = (users?.results ?? []) as { id: string; display_name: string }[]
+
+    const byUser = new Map<string, string[]>()
+    for (const row of ownedRows) {
+      const list = byUser.get(row.user_id)
+      if (list) list.push(row.card_id)
+      else byUser.set(row.user_id, [row.card_id])
+    }
+    const body: Leaderboard = {
+      cards: cardRows.map((row) => ({
+        id: row.id,
+        number: row.number,
+        categoryId: row.category_id,
+      })),
+      players: userRows
+        .map((row) => ({
+          id: row.id,
+          displayName: row.display_name,
+          owned: byUser.get(row.id) ?? [],
+        }))
+        .sort(
+          (a, b) =>
+            b.owned.length - a.owned.length ||
+            a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' }),
+        ),
+    }
+    return c.json(body)
+  })
 
   // ---------- Images ----------
 

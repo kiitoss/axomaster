@@ -109,7 +109,11 @@ function track(e: PointerEvent, onMove: (dx: number, dy: number, ev: PointerEven
   const startY = e.clientY
   const move = (ev: PointerEvent) => {
     if (ev.pointerId !== e.pointerId || token !== gesture) return
-    onMove(((ev.clientX - startX) / rect.width) * 100, ((ev.clientY - startY) / rect.height) * 100, ev)
+    onMove(
+      ((ev.clientX - startX) / rect.width) * 100,
+      ((ev.clientY - startY) / rect.height) * 100,
+      ev,
+    )
   }
   const up = (ev: PointerEvent) => {
     if (ev.pointerId !== e.pointerId) return
@@ -175,7 +179,8 @@ function startRotate(e: PointerEvent, layer: Layer) {
     let angle = (Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180) / Math.PI + 90
     if (angle > 180) angle -= 360
     if (ev.shiftKey) angle = Math.round(angle / 15) * 15
-    else if (Math.abs(angle % 90) < 3 || Math.abs(angle % 90) > 87) angle = Math.round(angle / 90) * 90
+    else if (Math.abs(angle % 90) < 3 || Math.abs(angle % 90) > 87)
+      angle = Math.round(angle / 90) * 90
     layer.rotation = Math.round(angle)
   })
 }
@@ -189,7 +194,11 @@ function onBackgroundDown(e: PointerEvent) {
   if (e.button !== 0 || pointers.size > 1) return
   const rect = photoRect()
   const inPhoto =
-    rect && e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom
+    rect &&
+    e.clientX >= rect.left &&
+    e.clientX <= rect.right &&
+    e.clientY >= rect.top &&
+    e.clientY <= rect.bottom
   if (!inPhoto || !draft.value.photo.imageId) {
     selected.value = inPhoto ? 'photo' : 'card'
     return
@@ -247,7 +256,11 @@ function onWheel(e: WheelEvent) {
                 :class="h"
                 @pointerdown.stop="startResize($event, layer, h)"
               />
-              <span class="rotate" title="Rotation (Maj : par 15°)" @pointerdown.stop="startRotate($event, layer)" />
+              <span
+                class="rotate"
+                title="Rotation (Maj : par 15°)"
+                @pointerdown.stop="startRotate($event, layer)"
+              />
             </template>
           </div>
           <div v-show="guides.v" class="guide vertical" />
@@ -258,11 +271,17 @@ function onWheel(e: WheelEvent) {
     <p class="hint">
       <template v-if="touch">
         <template v-if="selected === 'photo'">Glissez pour recadrer · pincez pour zoomer</template>
-        <template v-else-if="selectedLayer">Glissez pour déplacer · pincez pour redimensionner</template>
+        <template v-else-if="selectedLayer">
+          Glissez pour déplacer · pincez pour redimensionner
+        </template>
         <template v-else>Touchez la photo ou un calque pour le modifier</template>
       </template>
-      <template v-else-if="selected === 'photo'">Glissez pour recadrer la photo · molette pour zoomer</template>
-      <template v-else>Maj : garder les proportions · Alt : désactiver le magnétisme · Suppr : effacer</template>
+      <template v-else-if="selected === 'photo'">
+        Glissez pour recadrer la photo · molette pour zoomer
+      </template>
+      <template v-else>
+        Maj : garder les proportions · Alt : désactiver le magnétisme · Suppr : effacer
+      </template>
     </p>
   </div>
 </template>
@@ -319,7 +338,7 @@ function onWheel(e: WheelEvent) {
 }
 
 .box:hover {
-  outline-color: rgb(168 131 47 / 0.6);
+  outline-color: rgb(139 92 246 / 0.7);
 }
 
 .box.selected {
@@ -341,14 +360,46 @@ function onWheel(e: WheelEvent) {
   translate: -50% -50%;
 }
 
-.handle.nw { left: 0; top: 0; cursor: nwse-resize; }
-.handle.n { left: 50%; top: 0; cursor: ns-resize; }
-.handle.ne { left: 100%; top: 0; cursor: nesw-resize; }
-.handle.e { left: 100%; top: 50%; cursor: ew-resize; }
-.handle.se { left: 100%; top: 100%; cursor: nwse-resize; }
-.handle.s { left: 50%; top: 100%; cursor: ns-resize; }
-.handle.sw { left: 0; top: 100%; cursor: nesw-resize; }
-.handle.w { left: 0; top: 50%; cursor: ew-resize; }
+.handle.nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.handle.n {
+  left: 50%;
+  top: 0;
+  cursor: ns-resize;
+}
+.handle.ne {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.handle.e {
+  left: 100%;
+  top: 50%;
+  cursor: ew-resize;
+}
+.handle.se {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
+}
+.handle.s {
+  left: 50%;
+  top: 100%;
+  cursor: ns-resize;
+}
+.handle.sw {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+.handle.w {
+  left: 0;
+  top: 50%;
+  cursor: ew-resize;
+}
 
 .rotate {
   position: absolute;

@@ -9,7 +9,7 @@ import { errorMessage } from '@/api/client'
 const store = useCardsStore()
 const toast = useToast()
 
-const PALETTE = ['#3f5d8c', '#a8832f', '#5d7d68', '#6d4f8f', '#9b3b2f', '#4a463f']
+const PALETTE = ['#3f5d8c', '#8b5cf6', '#5d7d68', '#6d4f8f', '#9b3b2f', '#4a463f']
 const name = ref('')
 const color = ref(PALETTE[0]!)
 
@@ -53,13 +53,6 @@ function remove(id: string, label: string) {
 
 <template>
   <div class="page">
-    <p class="eyebrow">Organisation</p>
-    <h1>Collections</h1>
-    <p class="muted lead">
-      Regroupez les cartes par thème : collaborateurs, séminaires, projets… La couleur apparaît sur
-      le bandeau de la carte, et chaque collection publiée a son propre booster.
-    </p>
-
     <ul class="list">
       <li v-for="category in store.categories" :key="category.id" class="item">
         <input
@@ -104,17 +97,7 @@ function remove(id: string, label: string) {
 .page {
   max-width: 720px;
   margin: 0 auto;
-  padding: var(--space-7) var(--space-6);
-}
-
-h1 {
-  font-size: 52px;
-  font-weight: 500;
-}
-
-.lead {
-  margin: var(--space-2) 0 var(--space-6);
-  max-width: 520px;
+  padding: var(--space-5) var(--space-6) var(--space-7);
 }
 
 .list {
@@ -134,7 +117,7 @@ h1 {
 
 .name {
   flex: 1;
-  font: 500 19px var(--font-serif);
+  font: 600 16px var(--font-display);
   background: transparent;
   border-color: transparent;
 }
@@ -167,10 +150,6 @@ h1 {
 @media (max-width: 860px) {
   .page {
     padding: var(--space-5) var(--space-4);
-  }
-
-  h1 {
-    font-size: 40px;
   }
 
   .count {

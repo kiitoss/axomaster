@@ -72,7 +72,13 @@ function onPointerMove(e: PointerEvent) {
   const rect = root.value!.getBoundingClientRect()
   const px = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
   const py = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
-  tilt.value = { rx: (0.5 - py) * 12, ry: (px - 0.5) * 16, mx: px * 100, my: py * 100, active: true }
+  tilt.value = {
+    rx: (0.5 - py) * 12,
+    ry: (px - 0.5) * 16,
+    mx: px * 100,
+    my: py * 100,
+    active: true,
+  }
 }
 
 function onPointerLeave() {
@@ -115,7 +121,9 @@ defineExpose({ inner })
             <h2 class="name" :style="{ fontSize: `${nameSize}px` }">
               {{ card.name || 'Sans titre' }}
             </h2>
-            <span v-if="card.number != null" class="number">Nº {{ formatNumber(card.number) }}</span>
+            <span v-if="card.number != null" class="number"
+              >Nº {{ formatNumber(card.number) }}</span
+            >
           </header>
 
           <div class="photo">
@@ -144,7 +152,12 @@ defineExpose({ inner })
         </div>
 
         <div class="layers">
-          <CardLayer v-for="layer in card.layers" v-show="layer.visible" :key="layer.id" :layer="layer" />
+          <CardLayer
+            v-for="layer in card.layers"
+            v-show="layer.visible"
+            :key="layer.id"
+            :layer="layer"
+          />
         </div>
 
         <div class="holo" />
@@ -167,8 +180,8 @@ defineExpose({ inner })
   inset: 0;
   border-radius: 4.6% / 3.3%;
   box-shadow:
-    0 1px 2px rgb(29 27 24 / 0.12),
-    0 8px 24px rgb(29 27 24 / 0.12);
+    0 1px 2px rgb(15 23 42 / 0.12),
+    0 8px 24px rgb(15 23 42 / 0.12);
   transform: rotateX(var(--rx)) rotateY(var(--ry));
   transition:
     transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -181,8 +194,8 @@ defineExpose({ inner })
     transform 0.08s linear,
     box-shadow 0.3s;
   box-shadow:
-    0 2px 4px rgb(29 27 24 / 0.12),
-    0 20px 50px rgb(29 27 24 / 0.22);
+    0 2px 4px rgb(15 23 42 / 0.12),
+    0 20px 50px rgb(15 23 42 / 0.22);
 }
 
 .inner {
@@ -205,12 +218,12 @@ defineExpose({ inner })
   padding: 22px 26px 16px;
   border-radius: 16px;
   background:
-    radial-gradient(120% 80% at 50% 0%, rgb(255 255 255 / 0.65), transparent 70%), #f7f3ea;
+    radial-gradient(120% 80% at 50% 0%, rgb(255 255 255 / 0.65), transparent 70%), #fbfaff;
   box-shadow:
-    inset 0 0 0 1px rgb(29 27 24 / 0.14),
-    inset 0 0 0 6px #f7f3ea,
+    inset 0 0 0 1px rgb(15 23 42 / 0.14),
+    inset 0 0 0 6px #fbfaff,
     inset 0 0 0 7px color-mix(in srgb, var(--rarity) 55%, transparent);
-  color: #1d1b18;
+  color: #0f172a;
 }
 
 .head {
@@ -245,10 +258,10 @@ defineExpose({ inner })
   height: 520px;
   border-radius: 6px;
   overflow: hidden;
-  background: #e9e3d6;
+  background: #e2e8f0;
   box-shadow:
-    0 0 0 1px rgb(29 27 24 / 0.18),
-    0 0 0 5px #f7f3ea,
+    0 0 0 1px rgb(15 23 42 / 0.18),
+    0 0 0 5px #fbfaff,
     0 0 0 6px color-mix(in srgb, var(--rarity) 45%, transparent);
   margin: 6px 6px 0;
 }
@@ -266,10 +279,10 @@ defineExpose({ inner })
   width: 100%;
   height: 100%;
   font: 500 140px var(--font-serif);
-  color: rgb(29 27 24 / 0.18);
+  color: rgb(15 23 42 / 0.18);
   background:
-    repeating-linear-gradient(45deg, transparent 0 14px, rgb(29 27 24 / 0.03) 14px 15px),
-    linear-gradient(160deg, #efe9dd, #e2dacb);
+    repeating-linear-gradient(45deg, transparent 0 14px, rgb(15 23 42 / 0.03) 14px 15px),
+    linear-gradient(160deg, #f1f5f9, #e2e8f0);
 }
 
 .ribbon {
@@ -277,14 +290,14 @@ defineExpose({ inner })
   top: 16px;
   left: 0;
   padding: 7px 16px 7px 14px;
-  background: rgb(247 243 234 / 0.94);
+  background: rgb(251 250 255 / 0.94);
   border-left: 4px solid var(--cat);
   border-radius: 0 3px 3px 0;
   font: 600 13px var(--font-sans);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #1d1b18;
-  box-shadow: 0 2px 8px rgb(29 27 24 / 0.12);
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
 }
 
 .subtitle {
@@ -316,7 +329,7 @@ defineExpose({ inner })
   flex: 1;
   margin: 0 10px;
   font: 400 17px/1.55 var(--font-sans);
-  color: #47433c;
+  color: #475569;
   text-align: center;
   display: -webkit-box;
   -webkit-line-clamp: 4;
@@ -329,11 +342,11 @@ defineExpose({ inner })
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 12px 6px 0;
-  border-top: 1px solid rgb(29 27 24 / 0.12);
+  border-top: 1px solid rgb(15 23 42 / 0.12);
   font: 500 12px var(--font-sans);
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #7c766b;
+  color: #64748b;
 }
 
 .pips {
@@ -355,7 +368,7 @@ defineExpose({ inner })
 .brand {
   font: 600 15px var(--font-serif);
   letter-spacing: 0.3em;
-  color: #1d1b18;
+  color: #0f172a;
 }
 
 .year {

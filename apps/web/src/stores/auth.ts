@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { SessionUser } from '@axomaster/card-model'
 import { ApiError, get, post } from '@/api/client'
+import { usePush } from '@/composables/usePush'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<SessionUser | null>(null)
@@ -23,6 +24,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
+    // L'appareil ne doit plus recevoir les notifications de ce compte.
+    await usePush().disable()
     try {
       await post('auth/logout')
     } finally {

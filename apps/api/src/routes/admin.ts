@@ -8,25 +8,22 @@ import {
   categorySchema,
   createUserRequestSchema,
   giftBoostersRequestSchema,
+  giftNotification,
   importRequestSchema,
   initialBoosterAnchor,
   newId,
   updateUserRequestSchema,
   type AdminUser,
+  type OwnershipEntry,
+  type PlayerCard,
 } from '@axomaster/card-model'
 import type { AppEnv } from '../env'
 import { requireAdmin, toSessionUser, type UserRow } from '../lib/auth'
-import {
-  getAdminCard,
-  ownedCards,
-  parseCard,
-  toAdminCard,
-  upsertCard,
-  type CardRow,
-} from '../lib/db'
+import { getAdminCard, parseCard, toAdminCard, upsertCard, type CardRow } from '../lib/db'
 import { HttpError, nowIso, placeholders, readJson } from '../lib/http'
 import { imageStorage, MAX_IMAGE_BYTES } from '../lib/images'
 import { hashPassword } from '../lib/password'
+import { notifyAllUsers, notifyUsers } from '../lib/notify'
 import { loadSettings, saveSettings } from '../lib/settings'
 
 const statusRequestSchema = z.object({
@@ -154,6 +151,37 @@ export const adminRoutes = new Hono<AppEnv>()
       })),
     )
   })
+  .get('/users/:id/cards', async (c) => {
+    const id = c.req.param('id')
+    const user = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(id).first()
+    if (!user) throw new HttpError(404, 'Joueur introuvable')
+    const { results } = await c.env.DB.prepare(
+      `SELECT card_id, quantity, first_obtained_at FROM user_cards
+       WHERE user_id = ? AND quantity > 0`,
+    )
+      .bind(id)
+      .all<{ card_id: string; quantity: number; first_obtained_at: string }>()
+    return c.json(
+      results.map((row): PlayerCard => ({
+        cardId: row.card_id,
+        quantity: row.quantity,
+        firstObtainedAt: row.first_obtained_at,
+      })),
+    )
+  })
+  /** Toutes les possessions (quantité > 0), pour le tableau joueurs × cartes. */
+  .get('/ownership', async (c) => {
+    const { results } = await c.env.DB.prepare(
+      'SELECT user_id, card_id, quantity FROM user_cards WHERE quantity > 0',
+    ).all<{ user_id: string; card_id: string; quantity: number }>()
+    return c.json(
+      results.map((row): OwnershipEntry => ({
+        userId: row.user_id,
+        cardId: row.card_id,
+        quantity: row.quantity,
+      })),
+    )
+  })
   .post('/users', async (c) => {
     const input = await readJson(c, createUserRequestSchema)
     const settings = await loadSettings(c.env.DB)
@@ -209,7 +237,6 @@ export const adminRoutes = new Hono<AppEnv>()
     if (!result?.meta.changes) throw new HttpError(404, 'Utilisateur introuvable')
     return c.body(null, 204)
   })
-  .get('/users/:id/cards', async (c) => c.json(await ownedCards(c.env.DB, c.req.param('id'))))
 
   // ---------- Boosters ----------
 
@@ -220,13 +247,26 @@ export const adminRoutes = new Hono<AppEnv>()
     return c.json(settings)
   })
   .post('/boosters/gift-all', async (c) => {
-    const { count } = await readJson(c, giftBoostersRequestSchema)
+    const { count, message } = await readJson(c, giftBoostersRequestSchema)
     const result = await c.env.DB.prepare(
       'UPDATE users SET bonus_boosters = bonus_boosters + ? WHERE disabled = 0',
     )
       .bind(count)
       .run()
+    c.executionCtx.waitUntil(notifyAllUsers(c.env, giftNotification(count, message)))
     return c.json({ players: result.meta.changes })
+  })
+  .post('/users/:id/boosters/gift', async (c) => {
+    const { count, message } = await readJson(c, giftBoostersRequestSchema)
+    const id = c.req.param('id')
+    const result = await c.env.DB.prepare(
+      'UPDATE users SET bonus_boosters = bonus_boosters + ? WHERE id = ? AND disabled = 0',
+    )
+      .bind(count, id)
+      .run()
+    if (!result.meta.changes) throw new HttpError(404, 'Joueur introuvable ou désactivé')
+    c.executionCtx.waitUntil(notifyUsers(c.env, [id], giftNotification(count, message)))
+    return c.body(null, 204)
   })
 
   // ---------- Images ----------

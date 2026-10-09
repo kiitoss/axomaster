@@ -60,7 +60,7 @@ export function buildSamplePack(): CardPack {
     size: 26,
     font: 'serif',
     italic: true,
-    color: '#a8832f',
+    color: '#8b5cf6',
   })
   const stampLine = createShapeLayer('rect', 'Cadre du tampon')
   Object.assign(stampLine, {
@@ -71,7 +71,7 @@ export function buildSamplePack(): CardPack {
     h: 5.6,
     rotation: 8,
     fill: 'rgba(255,250,240,0.85)',
-    stroke: '#a8832f',
+    stroke: '#8b5cf6',
     strokeWidth: 2,
     radius: 4,
   })
@@ -84,7 +84,7 @@ export function buildSamplePack(): CardPack {
     categoryId: 'collaborateurs',
     rarity: 'legendary',
     number: 1,
-    image: portrait('CL', ['#3b4a63', '#a8832f']),
+    image: portrait('CL', ['#3b4a63', '#8b5cf6']),
     layers: [stampLine, stamp],
   })
   add('hugo', {
@@ -125,16 +125,17 @@ export function buildSamplePack(): CardPack {
     categoryId: 'evenements',
     rarity: 'epic',
     number: 1,
-    image: landscape(['#1f3b57', '#7fa3c0', '#e9d9b0']),
+    image: landscape(['#1f3b57', '#7fa3c0', '#ddd6fe']),
   })
   add('hackathon', {
     name: 'Hackathon de printemps',
     subtitle: 'Lyon · mars 2026',
-    description: '24 heures, 9 équipes, 3 pizzas par personne et une démo qui a marché du premier coup.',
+    description:
+      '24 heures, 9 équipes, 3 pizzas par personne et une démo qui a marché du premier coup.',
     categoryId: 'evenements',
     rarity: 'rare',
     number: 2,
-    image: geometric(['#1d1b18', '#a8832f', '#efe2bf']),
+    image: geometric(['#0f172a', '#8b5cf6', '#ede9fe']),
   })
   add('afterwork', {
     name: 'Afterwork d’été',
@@ -151,7 +152,7 @@ export function buildSamplePack(): CardPack {
     cards,
     categories: [
       { id: 'collaborateurs', name: 'Collaborateurs', color: '#3f5d8c' },
-      { id: 'evenements', name: 'Événements', color: '#a8832f' },
+      { id: 'evenements', name: 'Événements', color: '#8b5cf6' },
     ],
     images,
   })
@@ -175,7 +176,7 @@ function portrait(initials: string, [dark, light]: [string, string]): string {
   const { el, ctx, w, h } = canvas()
   const bg = ctx.createLinearGradient(0, 0, w, h)
   bg.addColorStop(0, light)
-  bg.addColorStop(1, '#f6f2ea')
+  bg.addColorStop(1, '#f5f3ff')
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, w, h)
 

@@ -98,7 +98,11 @@ function formatDate(iso: string) {
     >
       <FileJson />
       <span v-if="fileName" class="file">{{ fileName }}</span>
-      <span v-else class="drop-desktop">Déposez un fichier <code>.json</code> ici<br /><span class="muted">ou cliquez pour parcourir</span></span>
+      <span v-else class="drop-desktop"
+        >Déposez un fichier <code>.json</code> ici<br /><span class="muted"
+          >ou cliquez pour parcourir</span
+        ></span
+      >
       <span v-if="!fileName" class="drop-touch">Choisir le fichier <code>.json</code> reçu</span>
       <input type="file" accept=".json,application/json" class="visually-hidden" @change="onPick" />
     </label>
@@ -107,7 +111,8 @@ function formatDate(iso: string) {
 
     <div v-if="pack" class="summary">
       <p>
-        Paquet de <strong>{{ pack.author }}</strong>, exporté le {{ formatDate(pack.exportedAt) }}.
+        Paquet de <strong>{{ pack.author }}</strong
+        >, exporté le {{ formatDate(pack.exportedAt) }}.
       </p>
       <ul>
         <li>{{ pack.cards.length }} carte{{ pack.cards.length > 1 ? 's' : '' }}</li>
@@ -125,8 +130,10 @@ function formatDate(iso: string) {
       <fieldset v-if="duplicates" class="strategy">
         <legend class="label">Cartes déjà présentes</legend>
         <label><input v-model="strategy" type="radio" value="skip" /> Les ignorer</label>
-        <label><input v-model="strategy" type="radio" value="replace" /> Les remplacer par la version
-          importée</label>
+        <label
+          ><input v-model="strategy" type="radio" value="replace" /> Les remplacer par la version
+          importée</label
+        >
         <label><input v-model="strategy" type="radio" value="copy" /> Les importer en double</label>
       </fieldset>
     </div>

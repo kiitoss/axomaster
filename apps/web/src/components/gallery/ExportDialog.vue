@@ -47,7 +47,8 @@ async function confirmExport() {
     </p>
 
     <p class="muted">
-      Signé par <strong>{{ store.authorName }}</strong>.
+      Signé par <strong>{{ store.authorName }}</strong
+      >.
     </p>
 
     <fieldset class="scope">

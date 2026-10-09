@@ -50,7 +50,30 @@ pnpm --filter @axomaster/api exec wrangler r2 bucket create axomaster-images
 puis décommenter le bloc `r2_buckets` de `apps/api/wrangler.jsonc`. Les images déjà stockées dans
 D1 ne sont pas migrées automatiquement : à faire avant de créer des cartes.
 
-## 4. Premier déploiement
+## 4. (Facultatif) Activer les notifications push
+
+Les notifications sont envoyées dans quatre cas : booster rechargé, booster offert, proposition
+d'échange reçue, échange accepté ou refusé. Elles exigent trois secrets ; sans eux, l'API
+fonctionne normalement mais la cloche n'apparaît pas.
+
+```bash
+pnpm vapid:keys      # affiche VAPID_PUBLIC_KEY et VAPID_PRIVATE_KEY
+pnpm --filter @axomaster/api exec wrangler secret put VAPID_PUBLIC_KEY
+pnpm --filter @axomaster/api exec wrangler secret put VAPID_PRIVATE_KEY
+pnpm --filter @axomaster/api exec wrangler secret put VAPID_SUBJECT   # mailto:<adresse de contact>
+```
+
+Ne pas régénérer les clés ensuite : tous les appareils abonnés devraient réactiver les
+notifications. Les recharges de boosters sont vérifiées par un cron du Worker toutes les 5 minutes
+(`triggers` dans `wrangler.jsonc`).
+
+En local, mettre ces trois lignes dans `apps/api/.dev.vars` (ignoré par git). Pour déclencher le
+cron à la main : `pnpm --filter @axomaster/api exec wrangler dev --test-scheduled`, puis
+`curl "http://localhost:8787/__scheduled"`. Le push exige HTTPS (sauf sur `localhost`) : sur
+téléphone, tester sur le site déployé. Sur iPhone, il faut d'abord ajouter le site à l'écran
+d'accueil (Partager → Sur l'écran d'accueil), puis activer la cloche depuis l'app installée.
+
+## 5. Premier déploiement
 
 ```bash
 pnpm release         # build du front + wrangler deploy
@@ -65,7 +88,7 @@ pnpm --filter @axomaster/api create-user <identifiant> --admin --remote --name "
 Se connecter sur le site : l'administrateur crée ensuite les joueurs depuis **Administration →
 Joueurs**, et peut charger les cartes d'exemple puis les publier depuis la galerie.
 
-## 5. Déploiement continu (GitHub Actions)
+## 6. Déploiement continu (GitHub Actions)
 
 Le workflow `.github/workflows/deploy.yml` se déclenche à chaque tag poussé : vérifications
 (typecheck, lint, tests), build, migrations D1 puis déploiement.

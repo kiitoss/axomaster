@@ -116,14 +116,9 @@ async function loadSamples() {
 <template>
   <div class="gallery">
     <section class="intro">
-      <p class="eyebrow">Administration</p>
-      <h1>Galerie</h1>
       <p class="muted">
         {{ store.cards.length }} carte{{ store.cards.length > 1 ? 's' : '' }} ·
-        {{ publishedCount }} publiée{{ publishedCount > 1 ? 's' : ''
-        }}<template v-if="publishedCount < store.cards.length">
-          , les brouillons restent invisibles des joueurs
-        </template>.
+        {{ publishedCount }} publiée{{ publishedCount > 1 ? 's' : '' }}
       </p>
       <div class="intro-actions">
         <button class="btn" type="button" @click="showImport = true"><Upload /> Importer</button>
@@ -258,31 +253,19 @@ async function loadSamples() {
 .gallery {
   max-width: 1320px;
   margin: 0 auto;
-  padding: var(--space-7) var(--space-6) var(--space-7);
+  padding: var(--space-5) var(--space-6) var(--space-7);
 }
 
 .intro {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-rows: auto auto auto;
-  column-gap: var(--space-5);
-  margin-bottom: var(--space-6);
-}
-
-.intro h1 {
-  font-size: 52px;
-  line-height: 1.05;
-  font-weight: 500;
-}
-
-.intro .muted {
-  margin-top: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-5);
 }
 
 .intro-actions {
-  grid-column: 2;
-  grid-row: 1 / 4;
-  align-self: end;
   display: flex;
   gap: var(--space-2);
 }
@@ -344,8 +327,8 @@ async function loadSamples() {
   translate: -50% 0;
   padding: 2px 8px;
   border-radius: 10px;
-  background: rgb(29 27 24 / 0.78);
-  color: #f3ecdc;
+  background: rgb(15 23 42 / 0.78);
+  color: #f1f5f9;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -426,18 +409,11 @@ async function loadSamples() {
   }
 
   .intro {
-    grid-template-columns: 1fr;
     margin-bottom: var(--space-4);
   }
 
-  .intro h1 {
-    font-size: 40px;
-  }
-
   .intro-actions {
-    grid-column: 1;
-    grid-row: auto;
-    margin-top: var(--space-4);
+    width: 100%;
   }
 
   .intro-actions .btn {

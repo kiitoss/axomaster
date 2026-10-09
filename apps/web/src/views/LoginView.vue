@@ -5,6 +5,7 @@ import { LogIn } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { errorMessage } from '@/api/client'
 import CardBack from '@/components/booster/CardBack.vue'
+import AxoX from '@/components/brand/AxoX.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -34,53 +35,97 @@ async function submit() {
 </script>
 
 <template>
-  <div class="login">
-    <div class="deck" aria-hidden="true">
-      <div class="deck-card"><CardBack /></div>
-      <div class="deck-card"><CardBack /></div>
-      <div class="deck-card"><CardBack /></div>
+  <div class="login-page">
+    <div class="band" aria-hidden="true" />
+    <div class="watermark" aria-hidden="true"><AxoX /></div>
+
+    <div class="login">
+      <div class="deck" aria-hidden="true">
+        <div class="deck-card"><CardBack /></div>
+        <div class="deck-card"><CardBack /></div>
+        <div class="deck-card"><CardBack /></div>
+      </div>
+
+      <form class="panel" @submit.prevent="submit">
+        <p class="eyebrow">Jeu de cartes</p>
+        <h1>Axo<span>Master</span></h1>
+        <p class="muted lead">Collectionnez, ouvrez des boosters et échangez vos cartes.</p>
+
+        <div class="field">
+          <label for="login-username">Identifiant</label>
+          <input
+            id="login-username"
+            v-model="username"
+            class="input"
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
+            required
+          />
+        </div>
+        <div class="field">
+          <label for="login-password">Mot de passe</label>
+          <input
+            id="login-password"
+            v-model="password"
+            class="input"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <p v-if="error" class="error" role="alert">{{ error }}</p>
+
+        <button class="btn btn-primary submit" type="submit" :disabled="busy">
+          <LogIn /> {{ busy ? 'Connexion…' : 'Se connecter' }}
+        </button>
+      </form>
     </div>
-
-    <form class="panel" @submit.prevent="submit">
-      <p class="eyebrow">Jeu de cartes</p>
-      <h1>AxoMaster</h1>
-      <p class="muted lead">Collectionnez, ouvrez des boosters et échangez vos cartes.</p>
-
-      <div class="field">
-        <label for="login-username">Identifiant</label>
-        <input
-          id="login-username"
-          v-model="username"
-          class="input"
-          autocomplete="username"
-          autocapitalize="none"
-          spellcheck="false"
-          required
-        />
-      </div>
-      <div class="field">
-        <label for="login-password">Mot de passe</label>
-        <input
-          id="login-password"
-          v-model="password"
-          class="input"
-          type="password"
-          autocomplete="current-password"
-          required
-        />
-      </div>
-
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
-
-      <button class="btn btn-primary submit" type="submit" :disabled="busy">
-        <LogIn /> {{ busy ? 'Connexion…' : 'Se connecter' }}
-      </button>
-    </form>
   </div>
 </template>
 
 <style scoped>
+.login-page {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(60% 50% at 0% 100%, rgb(199 190 255 / 0.35), transparent 70%),
+    radial-gradient(50% 40% at 100% 0%, rgb(14 165 233 / 0.1), transparent 70%), var(--paper);
+}
+
+[data-theme='dark'] .login-page {
+  background:
+    radial-gradient(60% 50% at 0% 100%, rgb(109 40 217 / 0.25), transparent 70%),
+    radial-gradient(50% 40% at 100% 0%, rgb(14 165 233 / 0.08), transparent 70%), var(--paper);
+}
+
+[data-theme='dark'] .watermark {
+  color: rgb(167 139 250 / 0.06);
+}
+
+/* Bandeau en dégradé de la charte, en haut de page. */
+.band {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--brand-gradient);
+}
+
+/* Grand X en filigrane, débordant du coin de la page. */
+.watermark {
+  position: absolute;
+  right: -8vmin;
+  bottom: -14vmin;
+  width: 62vmin;
+  color: rgb(139 92 246 / 0.07);
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
 .login {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: center;
@@ -121,9 +166,14 @@ async function submit() {
 }
 
 h1 {
-  font-size: 56px;
-  font-weight: 500;
+  font-size: 52px;
+  font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+h1 span {
+  color: var(--accent);
 }
 
 .lead {
@@ -158,7 +208,12 @@ h1 {
   }
 
   h1 {
-    font-size: 44px;
+    font-size: 42px;
+  }
+
+  .watermark {
+    width: 90vmin;
+    right: -30vmin;
   }
 
   .submit {

@@ -10,7 +10,16 @@ export default defineWorkersConfig(async () => {
         workers: {
           singleWorker: true,
           wrangler: { configPath: './wrangler.jsonc' },
-          miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
+          miniflare: {
+            bindings: {
+              TEST_MIGRATIONS: migrations,
+              // Mêmes clés que test/push-helpers.ts.
+              VAPID_PUBLIC_KEY:
+                'BKgZAxussPn01xfamSN8kIieyLLumDTOJOawtVABUo2MDodsmLgY1qjjEJq-GQUrHWyUiEAhnSmbHq3Ceu15JUE',
+              VAPID_PRIVATE_KEY: 'WDhlKsdgVCIE0_ZT7ce90KZKzsY4DtRB_9tDcFVc-yo',
+              VAPID_SUBJECT: 'mailto:test@axomaster.test',
+            },
+          },
         },
       },
     },

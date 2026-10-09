@@ -38,8 +38,8 @@ export const useCollectionStore = defineStore('collection', () => {
     boosters.value = await get<Boosters>('boosters')
   }
 
-  async function openBooster(pool: string) {
-    const result = await post<OpenBoosterResponse>('boosters/open', { pool })
+  async function openBooster() {
+    const result = await post<OpenBoosterResponse>('boosters/open')
     if (boosters.value) boosters.value.stock = result.stock
     // Le catalogue sera rechargé à la prochaine visite.
     loaded.value = false

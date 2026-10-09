@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
+import AxoX from '@/components/brand/AxoX.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -9,7 +10,7 @@ const props = withDefaults(
     /** Grand paquet de la scène : inclinaison au pointeur et déchirure au geste. */
     tearable?: boolean
   }>(),
-  { caption: '', color: '#a8832f', tearable: false },
+  { caption: '', color: '#8b5cf6', tearable: false },
 )
 
 const emit = defineEmits<{ torn: [] }>()
@@ -143,7 +144,7 @@ const style = computed(() => ({
 
           <div class="content">
             <span class="brand">AxoMaster</span>
-            <span class="emblem"><i /></span>
+            <span class="emblem"><AxoX gradient="light" /></span>
             <span class="title">{{ title }}</span>
             <span v-if="caption" class="caption">{{ caption }}</span>
           </div>
@@ -227,9 +228,9 @@ const style = computed(() => ({
       160deg,
       color-mix(in srgb, var(--pack) 55%, #fff) 0%,
       var(--pack) 30%,
-      color-mix(in srgb, var(--pack) 55%, #1a1815) 62%,
+      color-mix(in srgb, var(--pack) 55%, #0f172a) 62%,
       color-mix(in srgb, var(--pack) 80%, #fff) 82%,
-      color-mix(in srgb, var(--pack) 60%, #1a1815) 100%
+      color-mix(in srgb, var(--pack) 60%, #0f172a) 100%
     );
 }
 
@@ -348,10 +349,10 @@ const style = computed(() => ({
   left: 0;
   height: 0.8cqw;
   width: calc(var(--p) * 100%);
-  background: linear-gradient(90deg, rgb(255 246 220 / 0.6), #fff);
+  background: linear-gradient(90deg, rgb(245 243 255 / 0.6), #fff);
   box-shadow:
-    0 0 2cqw 0.6cqw rgb(255 236 180 / 0.8),
-    0 0 6cqw 1cqw rgb(255 220 140 / 0.45);
+    0 0 2cqw 0.6cqw rgb(221 214 254 / 0.8),
+    0 0 6cqw 1cqw rgb(167 139 250 / 0.45);
   border-radius: 1cqw;
   opacity: min(1, calc(var(--p) * 4));
   transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -378,7 +379,7 @@ const style = computed(() => ({
   left: 0;
   right: 0;
   height: 2.2cqw;
-  background: #f3ead6;
+  background: #f5f3ff;
   clip-path: polygon(
     0 0,
     100% 0,
@@ -421,12 +422,12 @@ const style = computed(() => ({
   gap: 4cqw;
   padding: 10cqw 8cqw;
   text-align: center;
-  color: #fffaf0;
+  color: #fff;
   text-shadow: 0 0.3cqw 1.2cqw rgb(0 0 0 / 0.35);
 }
 
 .brand {
-  font: 600 5cqw var(--font-serif);
+  font: 700 4.4cqw var(--font-display);
   letter-spacing: 0.42em;
   text-transform: uppercase;
   padding-left: 0.42em;
@@ -438,24 +439,21 @@ const style = computed(() => ({
   width: 30cqw;
   height: 30cqw;
   border-radius: 50%;
-  border: 0.5cqw solid rgb(255 250 240 / 0.7);
+  border: 0.5cqw solid rgb(255 255 255 / 0.7);
   box-shadow:
     0 0 0 2cqw rgb(0 0 0 / 0.12),
-    0 0 0 2.4cqw rgb(255 250 240 / 0.3),
+    0 0 0 2.4cqw rgb(255 255 255 / 0.3),
     inset 0 0 6cqw rgb(255 255 255 / 0.25);
 }
 
-.emblem i {
-  width: 11cqw;
-  height: 11cqw;
-  transform: rotate(45deg);
-  background: linear-gradient(135deg, #fff8e4, #e9cf8a 50%, #a8832f);
-  box-shadow: 0 0 4cqw rgb(255 240 200 / 0.6);
+.emblem .axo-x {
+  width: 13cqw;
+  filter: drop-shadow(0 0 2.4cqw rgb(237 233 254 / 0.7));
 }
 
 .title {
-  font: 600 11cqw/1 var(--font-serif);
-  letter-spacing: 0.01em;
+  font: 700 10cqw/1.05 var(--font-display);
+  letter-spacing: -0.025em;
   overflow-wrap: anywhere;
 }
 

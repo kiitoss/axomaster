@@ -1,29 +1,40 @@
 :root {
-  /* Couleurs */
-  --paper: #f6f2ea;
-  --paper-2: #efe9dd;
-  --paper-3: #e6dfd0;
-  --surface: #fbf9f4;
-  --ink: #1d1b18;
-  --ink-2: #4a463f;
-  --ink-3: #8a8378;
-  --line: #ddd5c6;
-  --line-strong: #c7bdaa;
-  --accent: #a8832f;
-  --accent-soft: #efe2bf;
-  --danger: #9b3b2f;
+  color-scheme: light;
 
-  /* Typographie */
+  /* Couleurs (charte graphique) */
+  --paper: #f8fafc;
+  --paper-2: #f1f5f9;
+  --paper-3: #e2e8f0;
+  --surface: #ffffff;
+  --ink: #0f172a;
+  --ink-2: #334155;
+  --ink-3: #64748b;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --accent: #8b5cf6;
+  --accent-strong: #6d28d9;
+  --accent-soft: #ede9fe;
+  --accent-tint: #f5f3ff;
+  --accent-hover: #5b21b6;
+  --danger: #b42318;
+  --night: #0f172a;
+  --brand-gradient: linear-gradient(90deg, #c7beff, #0ea5e9);
+  /* Barres translucides (en-tête, onglets) et voile des dialogues. */
+  --bar-bg: rgb(255 255 255 / 0.9);
+  --backdrop: rgb(15 23 42 / 0.35);
+
+  /* Typographie : Inter partout, la serif est réservée aux faces de cartes. */
   --font-serif: 'Cormorant Garamond', 'Garamond', 'Times New Roman', serif;
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-sans);
 
   /* Formes */
   --radius-sm: 4px;
   --radius: 6px;
   --radius-lg: 10px;
-  --shadow-sm: 0 1px 2px rgb(29 27 24 / 0.06);
-  --shadow: 0 2px 6px rgb(29 27 24 / 0.06), 0 10px 30px rgb(29 27 24 / 0.08);
-  --shadow-lg: 0 12px 50px rgb(29 27 24 / 0.22);
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow: 0 2px 6px rgb(15 23 42 / 0.06), 0 10px 30px rgb(15 23 42 / 0.08);
+  --shadow-lg: 0 12px 50px rgb(15 23 42 / 0.22);
 
   /* Espacements */
   --space-1: 4px;
@@ -38,9 +49,38 @@
   --tabbar-h: 0px;
 }
 
+/* Thème sombre : appliqué via <html data-theme="dark"> (composables/useTheme.ts). Les faces de
+   cartes ne suivent pas le thème : ce sont des objets imprimés, toujours sur papier clair. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --paper: #0b1120;
+  --paper-2: #131c31;
+  --paper-3: #1e293b;
+  --surface: #111a2e;
+  --ink: #e2e8f0;
+  --ink-2: #cbd5e1;
+  --ink-3: #94a3b8;
+  --line: #1e293b;
+  --line-strong: #334155;
+  --accent: #a78bfa;
+  --accent-strong: #7c3aed;
+  --accent-soft: rgb(139 92 246 / 0.2);
+  --accent-tint: rgb(139 92 246 / 0.1);
+  --accent-hover: #6d28d9;
+  --danger: #f87171;
+  --bar-bg: rgb(11 17 32 / 0.88);
+  --backdrop: rgb(2 6 23 / 0.65);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow: 0 2px 6px rgb(0 0 0 / 0.25), 0 10px 30px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 12px 50px rgb(0 0 0 / 0.6);
+}
+
 @media (max-width: 860px) {
   :root {
-    --header-h: 56px;
+    /* Pas d'en-tête sur mobile (menu dans la barre d'onglets) : reste la zone de l'encoche. */
+    --header-h: env(safe-area-inset-top, 0px);
     --tabbar-h: calc(58px + env(safe-area-inset-bottom));
   }
 }

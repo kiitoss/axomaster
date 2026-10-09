@@ -18,7 +18,7 @@ export function formatNumber(n: number | null): string {
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'collaborateurs', name: 'Collaborateurs', color: '#3f5d8c' },
-  { id: 'evenements', name: 'Événements', color: '#a8832f' },
+  { id: 'evenements', name: 'Événements', color: '#8b5cf6' },
   { id: 'projets', name: 'Projets & clients', color: '#5d7d68' },
 ]
 
@@ -61,7 +61,7 @@ export function createTextLayer(name = 'Texte'): TextLayer {
     uppercase: false,
     letterSpacing: 0,
     align: 'center',
-    color: '#1d1b18',
+    color: '#0f172a',
   }
 }
 
@@ -93,8 +93,8 @@ export function createShapeLayer(shape: ShapeLayer['shape'], name = 'Forme'): Sh
     w: 30,
     h: isLine ? 1 : 21.5,
     shape,
-    fill: isLine ? 'transparent' : '#a8832f',
-    stroke: isLine ? '#1d1b18' : 'transparent',
+    fill: isLine ? 'transparent' : '#8b5cf6',
+    stroke: isLine ? '#0f172a' : 'transparent',
     strokeWidth: isLine ? 3 : 0,
     radius: 0,
   }

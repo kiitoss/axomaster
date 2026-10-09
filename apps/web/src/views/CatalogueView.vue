@@ -41,16 +41,16 @@ const entryId = (e: CatalogueEntry) => (e.owned ? e.card.id : e.id)
 const entryNumber = (e: CatalogueEntry) => (e.owned ? e.card.number : e.number)
 const entryCategory = (e: CatalogueEntry) => (e.owned ? e.card.categoryId : e.categoryId)
 
-interface Group {
-  key: string
+interface Tile {
+  entry: CatalogueEntry
   category: Category | null
-  entries: CatalogueEntry[]
-  owned: number
-  total: number
 }
 
-/** Une section par collection (dans l'ordre défini par l'admin), puis les cartes sans collection. */
-const groups = computed<Group[]>(() => {
+/**
+ * Une seule grille : les cartes restent regroupées par collection (dans l'ordre défini par
+ * l'admin, puis les cartes sans collection), triées par numéro, sans séparation visuelle.
+ */
+const tiles = computed<Tile[]>(() => {
   const byCategory = new Map<string, CatalogueEntry[]>()
   for (const entry of collection.entries) {
     const key = entryCategory(entry) ?? ''
@@ -63,26 +63,21 @@ const groups = computed<Group[]>(() => {
 
   return order
     .filter((key) => byCategory.has(key))
-    .map((key) => {
-      const all = byCategory.get(key)!
-      all.sort((a, b) => (entryNumber(a) ?? 1e9) - (entryNumber(b) ?? 1e9))
-      const visible = all.filter((e) =>
-        filter.value === 'owned' ? e.owned : filter.value === 'missing' ? !e.owned : true,
-      )
-      return {
-        key: key || '__none',
-        category: store.getCategory(key),
-        entries: visible,
-        owned: all.filter((e) => e.owned).length,
-        total: all.length,
-      }
+    .flatMap((key) => {
+      const category = store.getCategory(key)
+      return byCategory
+        .get(key)!
+        .sort((a, b) => (entryNumber(a) ?? 1e9) - (entryNumber(b) ?? 1e9))
+        .filter((e) =>
+          filter.value === 'owned' ? e.owned : filter.value === 'missing' ? !e.owned : true,
+        )
+        .map((entry) => ({ entry, category }))
     })
-    .filter((g) => g.entries.length)
 })
 
 /** Cartes possédées dans l'ordre d'affichage, pour la visionneuse. */
 const ownedCards = computed<Card[]>(() =>
-  groups.value.flatMap((g) => g.entries.flatMap((e) => (e.owned ? [e.card] : []))),
+  tiles.value.flatMap(({ entry }) => (entry.owned ? [entry.card] : [])),
 )
 const quantities = computed(() =>
   Object.fromEntries(collection.owned.map((e) => [e.card.id, e.quantity])),
@@ -100,70 +95,65 @@ function select(entry: CatalogueEntry) {
 
 <template>
   <div class="catalogue">
-    <section class="intro">
-      <p class="eyebrow">Ma collection</p>
-      <h1>Catalogue</h1>
-      <p v-if="total" class="muted">
-        {{ ownedCount }} carte{{ ownedCount > 1 ? 's' : '' }} découverte{{
-          ownedCount > 1 ? 's' : ''
-        }}
-        sur {{ total }} · {{ copies }} exemplaire{{ copies > 1 ? 's' : '' }} au total.
-      </p>
-      <div
-        v-if="total"
-        class="progress"
-        role="progressbar"
-        :aria-valuenow="percent"
-        aria-valuemin="0"
-        aria-valuemax="100"
-      >
-        <span :style="{ width: `${percent}%` }" />
-      </div>
-    </section>
-
     <section v-if="total" class="toolbar">
-      <div class="segmented" role="group" aria-label="Filtrer les cartes">
-        <button type="button" :class="{ active: filter === 'all' }" @click="filter = 'all'">
-          Toutes
-        </button>
-        <button type="button" :class="{ active: filter === 'owned' }" @click="filter = 'owned'">
-          Possédées
-        </button>
-        <button type="button" :class="{ active: filter === 'missing' }" @click="filter = 'missing'">
-          À découvrir
-        </button>
+      <div class="progress-block">
+        <p class="count">
+          <strong>{{ ownedCount }}</strong> / {{ total }} carte{{ total > 1 ? 's' : '' }}
+          <span class="percent">{{ percent }} %</span>
+        </p>
+        <div
+          class="progress"
+          role="progressbar"
+          :aria-valuenow="percent"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :title="`${copies} exemplaire${copies > 1 ? 's' : ''} au total`"
+        >
+          <span :style="{ width: `${percent}%` }" />
+        </div>
       </div>
-      <RouterLink to="/boosters" class="btn btn-primary btn-sm">
-        <Gift /> Ouvrir un booster
-      </RouterLink>
+      <div class="actions">
+        <div class="segmented" role="group" aria-label="Filtrer les cartes">
+          <button type="button" :class="{ active: filter === 'all' }" @click="filter = 'all'">
+            Toutes
+          </button>
+          <button type="button" :class="{ active: filter === 'owned' }" @click="filter = 'owned'">
+            Possédées
+          </button>
+          <button
+            type="button"
+            :class="{ active: filter === 'missing' }"
+            @click="filter = 'missing'"
+          >
+            À découvrir
+          </button>
+        </div>
+        <RouterLink to="/boosters" class="btn btn-primary btn-sm">
+          <Gift /> Ouvrir un booster
+        </RouterLink>
+      </div>
     </section>
 
     <p v-if="loading && !total" class="muted">Chargement du catalogue…</p>
 
     <template v-else-if="total">
-      <section v-for="group in groups" :key="group.key" class="group">
-        <header class="group-head" :style="{ '--group': group.category?.color ?? 'var(--ink-3)' }">
-          <h2>{{ group.category?.name ?? 'Hors collection' }}</h2>
-          <span class="muted">{{ group.owned }} / {{ group.total }}</span>
-        </header>
-        <div class="grid">
-          <button
-            v-for="entry in group.entries"
-            :key="entryId(entry)"
-            type="button"
-            class="cell"
-            :class="{ owned: entry.owned }"
-            :aria-label="
-              entry.owned ? `Voir ${entry.card.name || 'la carte'}` : 'Carte non découverte'
-            "
-            @click="select(entry)"
-          >
-            <CatalogueTile :entry="entry" :category="group.category" />
-          </button>
-        </div>
+      <section v-if="tiles.length" class="grid">
+        <button
+          v-for="{ entry, category } in tiles"
+          :key="entryId(entry)"
+          type="button"
+          class="cell"
+          :class="{ owned: entry.owned }"
+          :aria-label="
+            entry.owned ? `Voir ${entry.card.name || 'la carte'}` : 'Carte non découverte'
+          "
+          @click="select(entry)"
+        >
+          <CatalogueTile :entry="entry" :category="category" />
+        </button>
       </section>
 
-      <p v-if="!groups.length" class="empty muted">
+      <p v-else class="empty muted">
         {{
           filter === 'owned' ? 'Vous n’avez encore aucune carte.' : 'Vous avez toutes les cartes !'
         }}
@@ -192,28 +182,48 @@ function select(entry: CatalogueEntry) {
 .catalogue {
   max-width: 1320px;
   margin: 0 auto;
-  padding: var(--space-7) var(--space-6);
+  padding: var(--space-6) var(--space-6) var(--space-7);
 }
 
-.intro {
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
   margin-bottom: var(--space-5);
 }
 
-.intro h1 {
-  font-size: 52px;
-  line-height: 1.05;
-  font-weight: 500;
+.progress-block {
+  flex: 1;
+  max-width: 420px;
+  min-width: 220px;
 }
 
-.intro .muted {
-  margin-top: var(--space-2);
+.count {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.count strong {
+  font: 700 26px / 1 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.percent {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .progress {
-  max-width: 420px;
-  height: 4px;
-  margin-top: var(--space-3);
-  border-radius: 2px;
+  height: 8px;
+  margin-top: var(--space-2);
+  border-radius: 4px;
   background: var(--paper-3);
   overflow: hidden;
 }
@@ -221,20 +231,15 @@ function select(entry: CatalogueEntry) {
 .progress span {
   display: block;
   height: 100%;
-  background: var(--accent);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a78bfa, #7c3aed);
   transition: width 0.6s ease;
 }
 
-.toolbar {
+.actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
-  margin-bottom: var(--space-6);
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
 }
 
 .toolbar .btn {
@@ -243,43 +248,6 @@ function select(entry: CatalogueEntry) {
 
 .segmented button {
   white-space: nowrap;
-}
-
-.group + .group {
-  margin-top: var(--space-7);
-}
-
-.group-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--line);
-}
-
-.group-head h2 {
-  position: relative;
-  padding-left: var(--space-4);
-  font-size: 28px;
-  font-weight: 500;
-}
-
-.group-head h2::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  translate: 0 -50%;
-  transform: rotate(45deg);
-  background: var(--group);
-}
-
-.group-head .muted {
-  font-variant-numeric: tabular-nums;
 }
 
 .grid {
@@ -326,24 +294,18 @@ function select(entry: CatalogueEntry) {
     padding: var(--space-5) var(--space-4) var(--space-6);
   }
 
-  .intro h1 {
-    font-size: 40px;
+  .progress-block,
+  .actions {
+    flex: 1 1 100%;
+    max-width: none;
   }
 
-  .toolbar {
-    margin-bottom: var(--space-5);
-  }
-
-  .toolbar .segmented {
+  .actions .segmented {
     flex: 1;
   }
 
   .toolbar .btn {
     display: none;
-  }
-
-  .group-head h2 {
-    font-size: 24px;
   }
 
   .grid {

@@ -8,11 +8,13 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @axomaster/web --filter @axomaster/api dev",
+    "dev:lan": "pnpm --parallel --filter @axomaster/web --filter @axomaster/api dev:lan",
     "build": "pnpm --filter @axomaster/web build",
     "preview": "pnpm --filter @axomaster/web preview",
     "release": "pnpm build && pnpm --filter @axomaster/api release",
     "db:migrate": "pnpm --filter @axomaster/api db:migrate",
     "db:seed": "pnpm --filter @axomaster/api db:seed",
+    "vapid:keys": "pnpm --filter @axomaster/api vapid:keys",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "eslint .",

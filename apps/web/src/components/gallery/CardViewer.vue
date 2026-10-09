@@ -15,6 +15,8 @@ const props = defineProps<{
   readonly?: boolean
   /** Nombre d'exemplaires possédés, par carte. */
   quantities?: Record<string, number>
+  /** Rendue sur place plutôt que dans `body` : nécessaire au-dessus d'un `<dialog>` modal. */
+  inline?: boolean
 }>()
 const index = defineModel<number>('index', { required: true })
 const emit = defineEmits<{ close: [] }>()
@@ -71,8 +73,11 @@ function closeFromBackdrop() {
 }
 
 function onKey(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
-  else if (e.key === 'ArrowRight') go(1)
+  if (e.key === 'Escape') {
+    // Ne ferme pas aussi le dialogue modal sous-jacent.
+    e.preventDefault()
+    emit('close')
+  } else if (e.key === 'ArrowRight') go(1)
   else if (e.key === 'ArrowLeft') go(-1)
 }
 
@@ -128,7 +133,7 @@ async function remove() {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="body" :disabled="inline">
     <div
       class="viewer"
       role="dialog"
@@ -229,7 +234,7 @@ async function remove() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(26 24 21 / 0.92);
+  background: rgb(15 23 42 / 0.92);
   backdrop-filter: blur(6px);
   animation: fade 0.2s ease-out;
 }
@@ -255,7 +260,7 @@ async function remove() {
 
 .meta {
   width: 240px;
-  color: #ece6da;
+  color: #e2e8f0;
 }
 
 .meta h2 {
@@ -267,8 +272,8 @@ async function remove() {
 
 .sub {
   margin-top: var(--space-1);
-  font: italic 500 19px var(--font-serif);
-  color: #b9b1a3;
+  font: 400 15px var(--font-display);
+  color: #94a3b8;
 }
 
 dl {
@@ -286,7 +291,7 @@ dl div {
 }
 
 dt {
-  color: #8f877a;
+  color: #64748b;
 }
 
 dd {
@@ -303,7 +308,7 @@ dd {
 .actions .btn {
   background: transparent;
   border-color: rgb(255 255 255 / 0.2);
-  color: #ece6da;
+  color: #e2e8f0;
 }
 
 .actions .btn:hover {
@@ -312,14 +317,14 @@ dd {
 }
 
 .actions .btn-danger {
-  color: #e2a397;
+  color: #fca5a5;
 }
 
 .close {
   position: absolute;
   top: var(--space-4);
   right: var(--space-4);
-  color: #ece6da;
+  color: #e2e8f0;
 }
 
 .close:hover {
@@ -337,7 +342,7 @@ dd {
   border: 1px solid rgb(255 255 255 / 0.18);
   border-radius: 50%;
   background: transparent;
-  color: #ece6da;
+  color: #e2e8f0;
   cursor: pointer;
 }
 
@@ -414,7 +419,7 @@ dd {
     display: block;
     margin-top: var(--space-1);
     font-size: 12px;
-    color: #8f877a;
+    color: #64748b;
   }
 
   .actions {

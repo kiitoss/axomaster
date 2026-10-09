@@ -1,9 +1,11 @@
 import { Hono } from 'hono'
-import type { AppEnv } from './env'
+import type { AppEnv, Env } from './env'
+import { notifyBoosterRefills } from './jobs/boosterRefills'
 import { HttpError } from './lib/http'
 import { adminRoutes } from './routes/admin'
 import { authRoutes } from './routes/auth'
 import { playerRoutes } from './routes/player'
+import { pushRoutes } from './routes/push'
 import { tradeRoutes } from './routes/trades'
 
 /**
@@ -15,6 +17,7 @@ const app = new Hono<AppEnv>().basePath('/api')
 app.route('/auth', authRoutes)
 app.route('/admin', adminRoutes)
 app.route('/trades', tradeRoutes)
+app.route('/push', pushRoutes)
 app.route('/', playerRoutes)
 
 app.notFound((c) => c.json({ error: 'Route inconnue' }, 404))
@@ -25,4 +28,10 @@ app.onError((err, c) => {
   return c.json({ error: 'Erreur interne du serveur' }, 500)
 })
 
-export default app
+export default {
+  fetch: app.fetch,
+  /** Cron (wrangler.jsonc) : notifications de recharge des boosters. */
+  scheduled(_controller, env, ctx) {
+    ctx.waitUntil(notifyBoosterRefills(env))
+  },
+} satisfies ExportedHandler<Env>

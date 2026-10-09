@@ -39,7 +39,7 @@ async function onAddImage() {
     if (image) addImage(image.id, image.ratio)
   } catch (err) {
     console.error(err)
-    toast.error("Impossible de lire cette image.")
+    toast.error('Impossible de lire cette image.')
   }
 }
 </script>
@@ -51,9 +51,15 @@ async function onAddImage() {
       <div class="add">
         <button class="btn btn-sm" type="button" @click="addText"><Type /> Texte</button>
         <button class="btn btn-sm" type="button" @click="onAddImage"><ImageIcon /> Image</button>
-        <button class="btn btn-sm" type="button" title="Rectangle" @click="addShape('rect')"><Square /></button>
-        <button class="btn btn-sm" type="button" title="Ellipse" @click="addShape('ellipse')"><Circle /></button>
-        <button class="btn btn-sm" type="button" title="Ligne" @click="addShape('line')"><Minus /></button>
+        <button class="btn btn-sm" type="button" title="Rectangle" @click="addShape('rect')">
+          <Square />
+        </button>
+        <button class="btn btn-sm" type="button" title="Ellipse" @click="addShape('ellipse')">
+          <Circle />
+        </button>
+        <button class="btn btn-sm" type="button" title="Ligne" @click="addShape('line')">
+          <Minus />
+        </button>
       </div>
     </section>
 

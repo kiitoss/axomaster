@@ -6,13 +6,15 @@
   "description": "API AxoMaster : Cloudflare Worker (Hono + D1) qui sert aussi le front.",
   "scripts": {
     "dev": "node scripts/ensure-assets.mjs && wrangler dev --port 8787",
+    "dev:lan": "pnpm dev",
     "release": "wrangler deploy",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.scripts.json",
     "test": "node scripts/ensure-assets.mjs && vitest run",
     "db:migrate": "wrangler d1 migrations apply axomaster --local",
     "db:migrate:remote": "wrangler d1 migrations apply axomaster --remote",
     "db:seed": "tsx scripts/seed.ts",
-    "create-user": "tsx scripts/create-user.ts"
+    "create-user": "tsx scripts/create-user.ts",
+    "vapid:keys": "tsx scripts/vapid-keys.ts"
   },
   "dependencies": {
     "@axomaster/card-model": "workspace:*",

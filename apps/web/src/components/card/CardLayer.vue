@@ -35,7 +35,11 @@ const shapeStyle = computed(() => {
   const l = props.layer
   if (l.type !== 'shape') return {}
   if (l.shape === 'line') {
-    return { height: `${l.strokeWidth}px`, background: l.stroke, borderRadius: `${l.strokeWidth}px` }
+    return {
+      height: `${l.strokeWidth}px`,
+      background: l.stroke,
+      borderRadius: `${l.strokeWidth}px`,
+    }
   }
   return {
     background: l.fill,

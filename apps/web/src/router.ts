@@ -11,6 +11,8 @@ declare module 'vue-router' {
     public?: boolean
     /** Réservé aux administrateurs. */
     admin?: boolean
+    /** Grand X du logo en filigrane derrière la page. */
+    watermark?: boolean
   }
 }
 
@@ -26,9 +28,20 @@ export const router = createRouter({
     },
 
     // Espace joueur
-    { path: '/', name: 'catalogue', component: CatalogueView },
+    { path: '/', name: 'catalogue', component: CatalogueView, meta: { watermark: true } },
     { path: '/boosters', name: 'boosters', component: () => import('@/views/BoosterView.vue') },
-    { path: '/echanges', name: 'trades', component: () => import('@/views/TradesView.vue') },
+    {
+      path: '/echanges',
+      name: 'trades',
+      component: () => import('@/views/TradesView.vue'),
+      meta: { watermark: true },
+    },
+    {
+      path: '/classement',
+      name: 'leaderboard',
+      component: () => import('@/views/LeaderboardView.vue'),
+      meta: { watermark: true },
+    },
 
     // Administration
     {
