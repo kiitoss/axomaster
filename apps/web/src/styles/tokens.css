@@ -25,13 +25,16 @@
   --danger: #b42318;
   --night: #0f172a;
   --brand-gradient: linear-gradient(90deg, var(--brand-light), var(--brand));
-  /* Surfaces de navigation et d'album, communes aux deux thèmes. */
-  --shell: #26213b;
-  --shell-ink: #f6f3ff;
-  --shell-muted: #c1b8dc;
-  --shell-line: #484064;
-  --shell-active: #443963;
-  --shell-accent: var(--brand-light);
+  /* En clair, la navigation et la progression reprennent l'aplat lavande. */
+  --shell: var(--brand-light);
+  --shell-ink: var(--ink);
+  --shell-muted: #51426d;
+  --shell-line: #ab9ddd;
+  --shell-active: #e4ddff;
+  --shell-accent: var(--brand-deep);
+  --shell-action-bg: var(--surface);
+  --shell-action-ink: var(--ink);
+  --logo-bg: var(--surface);
   --album: #ddd6f2;
   --album-slot: var(--brand-light);
   --album-ink: #5c4c78;
@@ -84,6 +87,15 @@
   --accent-soft: #463966;
   --accent-tint: #342947;
   --accent-hover: #5c48b7;
+  --shell: #26213b;
+  --shell-ink: #f6f3ff;
+  --shell-muted: #c1b8dc;
+  --shell-line: #484064;
+  --shell-active: #443963;
+  --shell-accent: var(--brand-light);
+  --shell-action-bg: var(--brand-light);
+  --shell-action-ink: var(--shell);
+  --logo-bg: var(--night);
   --album: #231e34;
   --album-slot: #30273f;
   --album-ink: #aea1cd;

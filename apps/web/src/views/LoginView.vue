@@ -104,7 +104,7 @@ async function submit() {
   background: var(--brand-gradient);
 }
 
-/* Grand X en filigrane, débordant du coin de la page. */
+/* Monogramme X en filigrane, débordant du coin de la page. */
 .watermark {
   position: absolute;
   right: -8vmin;

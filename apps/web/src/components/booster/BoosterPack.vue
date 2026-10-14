@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import AxoX from '@/components/brand/AxoX.vue'
+import AxoLogo from '@/components/brand/AxoLogo.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -144,7 +144,7 @@ const style = computed(() => ({
 
           <div class="content">
             <span class="brand">AxoMaster</span>
-            <span class="emblem"><AxoX gradient="light" /></span>
+            <span class="emblem"><AxoLogo /></span>
             <span class="title">{{ title }}</span>
             <span v-if="caption" class="caption">{{ caption }}</span>
           </div>
@@ -446,8 +446,8 @@ const style = computed(() => ({
     inset 0 0 6cqw rgb(255 255 255 / 0.25);
 }
 
-.emblem .axo-x {
-  width: 13cqw;
+.emblem .axo-logo {
+  width: 27cqw;
   filter: drop-shadow(0 0 2.4cqw rgb(237 233 254 / 0.7));
 }
 

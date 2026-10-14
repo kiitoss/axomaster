@@ -329,9 +329,9 @@ function select(entry: CatalogueEntry) {
 }
 
 .collection-bar .btn-primary {
-  background: var(--shell-accent);
-  border-color: var(--shell-accent);
-  color: var(--shell);
+  background: var(--shell-action-bg);
+  border-color: var(--shell-action-bg);
+  color: var(--shell-action-ink);
 }
 
 .copies {

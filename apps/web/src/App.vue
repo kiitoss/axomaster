@@ -30,6 +30,7 @@ import { usePush } from '@/composables/usePush'
 import { useToast } from '@/composables/useToast'
 import { errorMessage } from '@/api/client'
 import ToastStack from '@/components/ui/ToastStack.vue'
+import AxoLogo from '@/components/brand/AxoLogo.vue'
 import AxoX from '@/components/brand/AxoX.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
 import PlayerAvatar from '@/components/players/PlayerAvatar.vue'
@@ -184,7 +185,7 @@ async function toggleNotifications() {
   <div class="app" :class="{ 'in-editor': inEditor, public: isPublic }">
     <header v-if="!isPublic" class="topbar" :class="{ 'admin-space': adminSpace }">
       <RouterLink :to="adminSpace ? '/admin' : '/'" class="logo">
-        <span class="logo-mark"><AxoX gradient="violet" /></span>
+        <span class="logo-mark"><AxoLogo /></span>
         <span class="logo-text">AxoMaster</span>
         <span v-if="adminSpace" class="logo-badge">Admin</span>
       </RouterLink>
@@ -376,18 +377,9 @@ async function toggleNotifications() {
 .logo-mark {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 7px 8px;
-  border-radius: 9px;
-  background: var(--night);
-  box-shadow: 0 2px 8px rgb(var(--brand-rgb) / 0.25);
-}
-
-[data-theme='dark'] .logo-mark {
-  box-shadow:
-    inset 0 0 0 1px rgb(var(--brand-light-rgb) / 0.35),
-    0 2px 12px rgb(var(--brand-rgb) / 0.35);
+  width: 40px;
+  height: 40px;
+  padding: 2px;
 }
 
 .logo-text {
@@ -500,7 +492,7 @@ async function toggleNotifications() {
   min-height: calc(100dvh - var(--header-h));
 }
 
-/* Grand X en filigrane, fixe derrière le contenu (comme sur la page de connexion). */
+/* Monogramme X en filigrane, fixe derrière le contenu. */
 .watermark {
   position: fixed;
   right: -8vmin;

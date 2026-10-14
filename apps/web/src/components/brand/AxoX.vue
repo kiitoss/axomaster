@@ -1,4 +1,4 @@
-<!-- Le « X » du logo. Sans dégradé, il prend la couleur du texte (currentColor). -->
+<!-- Monogramme décoratif X. Sans dégradé, il prend la couleur du texte. -->
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 

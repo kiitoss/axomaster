@@ -101,8 +101,10 @@ Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
 - Design sobre et classique : utiliser les tokens CSS de `styles/tokens.css` et les classes de
   `styles/base.css` (`.btn`, `.input`, `.field`, `.segmented`…) ; pas de framework CSS.
   Charte graphique : Inter partout (la serif Cormorant Garamond est réservée aux faces de cartes,
-  via `--font-serif`), accent violet `--accent` / `--accent-strong`, fond nuit `--night`, logo X
-  (`components/brand/AxoX.vue`), dégradé `--brand-gradient` en touche.
+  via `--font-serif`), accent violet `--accent` / `--accent-strong`, fond nuit `--night`, emblème
+  axolotl (`components/brand/AxoLogo.vue`), dégradé `--brand-gradient` en touche. Le fichier fourni
+  est conservé dans `apps/web/branding` ; `apps/web/scripts/brand-icons.py` génère les icônes.
+  Le monogramme X (`components/brand/AxoX.vue`) est réservé aux filigranes et aux motifs de fond.
 - **Thème clair / sombre** : par défaut celui de l'appareil, forçable depuis l'en-tête
   (`composables/useTheme.ts`, `<html data-theme>`, script anti-flash dans `index.html`). Les
   couleurs passent par les tokens (bloc `[data-theme='dark']` de `tokens.css`), jamais en dur.
