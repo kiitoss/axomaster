@@ -439,10 +439,11 @@ async function loadSamples() {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) 0;
+  padding: var(--space-4);
   margin-bottom: var(--space-6);
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
 }
 
 .toolbar .select {
@@ -473,6 +474,10 @@ async function loadSamples() {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: var(--space-6) var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--album);
 }
 
 .tile {
@@ -482,6 +487,7 @@ async function loadSamples() {
   background: none;
   cursor: zoom-in;
   border-radius: 12px;
+  box-shadow: var(--shadow);
 }
 
 .tile.selecting {
@@ -725,6 +731,7 @@ async function loadSamples() {
   .grid {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-5) var(--space-3);
+    padding: var(--space-3);
   }
 
   .samples-link {

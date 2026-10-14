@@ -2,25 +2,35 @@
   color-scheme: light;
 
   /* Couleurs (charte graphique) */
-  --paper: #f8fafc;
-  --paper-2: #f1f5f9;
-  --paper-3: #e2e8f0;
-  --surface: #ffffff;
-  --ink: #0f172a;
-  --ink-2: #334155;
-  --ink-3: #64748b;
-  --line: #e2e8f0;
-  --line-strong: #cbd5e1;
-  --accent: #8b5cf6;
-  --accent-strong: #6d28d9;
-  --accent-soft: #ede9fe;
-  --accent-tint: #f5f3ff;
-  --accent-hover: #5b21b6;
+  --paper: #eae6ef;
+  --paper-2: #e1dbe9;
+  --paper-3: #d3cbdf;
+  --surface: #f7f4fa;
+  --ink: #272032;
+  --ink-2: #51475f;
+  --ink-3: #73677f;
+  --line: #d8d0e2;
+  --line-strong: #bdb0cc;
+  --accent: #7545cd;
+  --accent-strong: #6533b9;
+  --accent-soft: #ded1f3;
+  --accent-tint: #eee6f8;
+  --accent-hover: #512593;
   --danger: #b42318;
   --night: #0f172a;
   --brand-gradient: linear-gradient(90deg, #c7beff, #0ea5e9);
+  /* Surfaces de navigation et d'album, communes aux deux thèmes. */
+  --shell: #21192e;
+  --shell-ink: #f5efff;
+  --shell-muted: #c0b2d2;
+  --shell-line: #443653;
+  --shell-active: #3f2e57;
+  --shell-accent: #d2b6ff;
+  --album: #dcd5e5;
+  --album-slot: #cfc5db;
+  --album-ink: #746585;
   /* Barres translucides (en-tête, onglets) et voile des dialogues. */
-  --bar-bg: rgb(255 255 255 / 0.9);
+  --bar-bg: rgb(247 244 250 / 0.95);
   --backdrop: rgb(15 23 42 / 0.35);
 
   /* Typographie : Inter partout, la serif est réservée aux faces de cartes. */
@@ -29,11 +39,11 @@
   --font-display: var(--font-sans);
 
   /* Formes */
-  --radius-sm: 4px;
-  --radius: 6px;
-  --radius-lg: 10px;
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
-  --shadow: 0 2px 6px rgb(15 23 42 / 0.06), 0 10px 30px rgb(15 23 42 / 0.08);
+  --radius-sm: 5px;
+  --radius: 8px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 2px 3px rgb(39 32 50 / 0.06);
+  --shadow: 0 3px 8px rgb(39 32 50 / 0.08), 0 12px 24px rgb(39 32 50 / 0.1);
   --shadow-lg: 0 12px 50px rgb(15 23 42 / 0.22);
 
   /* Espacements */
@@ -54,22 +64,25 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --paper: #0b1120;
-  --paper-2: #131c31;
-  --paper-3: #1e293b;
-  --surface: #111a2e;
-  --ink: #e2e8f0;
-  --ink-2: #cbd5e1;
-  --ink-3: #94a3b8;
-  --line: #1e293b;
-  --line-strong: #334155;
-  --accent: #a78bfa;
-  --accent-strong: #7c3aed;
-  --accent-soft: rgb(139 92 246 / 0.2);
-  --accent-tint: rgb(139 92 246 / 0.1);
-  --accent-hover: #6d28d9;
+  --paper: #16121d;
+  --paper-2: #211b2b;
+  --paper-3: #382d46;
+  --surface: #272031;
+  --ink: #f0eaf7;
+  --ink-2: #cfc2df;
+  --ink-3: #a99abb;
+  --line: #3b3049;
+  --line-strong: #5c4b70;
+  --accent: #c09af5;
+  --accent-strong: #8750d5;
+  --accent-soft: #47305f;
+  --accent-tint: #31233f;
+  --accent-hover: #7740c4;
+  --album: #211b2b;
+  --album-slot: #2c2438;
+  --album-ink: #a99abb;
   --danger: #f87171;
-  --bar-bg: rgb(11 17 32 / 0.88);
+  --bar-bg: rgb(39 32 49 / 0.95);
   --backdrop: rgb(2 6 23 / 0.65);
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);

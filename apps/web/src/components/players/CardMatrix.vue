@@ -134,6 +134,7 @@ const ordinal = (rank: number) => (rank === 1 ? '1er' : `${rank}e`)
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 table {
@@ -161,6 +162,7 @@ thead th {
   z-index: 2;
   padding: 6px 4px;
   vertical-align: bottom;
+  background: var(--paper-2);
 }
 
 tfoot th,
@@ -340,8 +342,9 @@ button.thumb {
 }
 
 .dot.on {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: #fff;
 }
 
 .count {

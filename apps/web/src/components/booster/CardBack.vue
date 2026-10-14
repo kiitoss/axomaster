@@ -7,11 +7,18 @@ defineProps<{
   label?: string
   /** Couleur de la collection, reprise par le liseré de l'emblème. */
   color?: string
+  /** Emplacement sobre de l'album ; le dos des boosters conserve son rendu. */
+  variant?: 'catalogue'
 }>()
 </script>
 
 <template>
-  <div class="back" aria-hidden="true" :style="color ? { '--ring': color } : undefined">
+  <div
+    class="back"
+    :class="variant"
+    aria-hidden="true"
+    :style="color ? { '--ring': color } : undefined"
+  >
     <div class="frame">
       <div class="pattern" />
       <span v-if="label" class="label">{{ label }}</span>
@@ -97,5 +104,45 @@ defineProps<{
   letter-spacing: 0.4em;
   text-transform: uppercase;
   color: #c4b5fd;
+}
+
+/* Les cartes à découvrir se lisent comme des emplacements dans l'album. */
+.catalogue {
+  background: var(--album-slot);
+  border: 1px solid var(--line-strong);
+}
+
+.catalogue .frame {
+  background: none;
+  box-shadow: none;
+  border: 1px solid var(--line-strong);
+}
+
+.catalogue .pattern {
+  display: none;
+}
+
+.catalogue .emblem {
+  width: 30cqw;
+  height: 30cqw;
+  border-color: var(--line-strong);
+  background: none;
+  box-shadow: none;
+}
+
+.catalogue .emblem .axo-x {
+  color: var(--album-ink);
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.catalogue .label,
+.catalogue .brand {
+  color: var(--album-ink);
+}
+
+.catalogue .brand {
+  letter-spacing: 0.18em;
+  font-size: 3.6cqw;
 }
 </style>

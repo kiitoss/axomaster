@@ -277,7 +277,7 @@ function toggleDisabled(user: AdminUser) {
   padding: var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: var(--surface);
+  background: var(--accent-tint);
 }
 
 .create .field {
@@ -288,16 +288,20 @@ function toggleDisabled(user: AdminUser) {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .item {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .item.disabled .who {
@@ -355,6 +359,8 @@ function toggleDisabled(user: AdminUser) {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
+  grid-column: 2 / -1;
   gap: var(--space-1);
 }
 
@@ -370,6 +376,7 @@ function toggleDisabled(user: AdminUser) {
   .item {
     grid-template-columns: auto 1fr;
     gap: var(--space-2) var(--space-3);
+    padding: var(--space-3);
   }
 
   .stats,

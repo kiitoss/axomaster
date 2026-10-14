@@ -180,24 +180,29 @@ async function giftAll(request: Required<GiftBoostersRequest>) {
 
 <style scoped>
 .page {
-  max-width: 720px;
+  max-width: 880px;
   margin: 0 auto;
   padding: var(--space-5) var(--space-6) var(--space-7);
 }
 
 .block {
-  padding: var(--space-5) 0;
-  border-top: 1px solid var(--line);
+  margin-bottom: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
-.block:first-child {
-  padding-top: 0;
-  border-top: 0;
+.block:last-child {
+  background: var(--accent-tint);
+  border-color: var(--line-strong);
 }
 
 .block h2 {
-  font-size: 26px;
-  font-weight: 500;
+  margin-bottom: var(--space-4);
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .block > .muted {
@@ -228,6 +233,10 @@ async function giftAll(request: Required<GiftBoostersRequest>) {
   .form,
   .form.creation {
     grid-template-columns: 1fr;
+  }
+
+  .block {
+    padding: var(--space-4);
   }
 }
 </style>
