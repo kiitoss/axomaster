@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   boosterRefillNotification,
+  creationsPublishedNotification,
+  creationsRejectedNotification,
   giftNotification,
   tradeRequestNotification,
   tradeResolvedNotification,
@@ -33,5 +35,15 @@ describe('notifications', () => {
       tag: 'trade-t1',
       url: './#/echanges',
     })
+  })
+
+  it('décrit la validation et le refus des créations', () => {
+    expect(creationsPublishedNotification(1).title).toBe('Votre carte est validée !')
+    expect(creationsPublishedNotification(2)).toMatchObject({
+      title: '2 de vos cartes sont validées !',
+      url: './#/creations',
+    })
+    expect(creationsRejectedNotification(1, ' Photo floue ').body).toBe('« Photo floue »')
+    expect(creationsRejectedNotification(1, '').body).toContain('Mes créations')
   })
 })

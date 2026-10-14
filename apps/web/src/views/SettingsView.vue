@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { Save } from 'lucide-vue-next'
-import type { BoosterSettings, GiftBoostersRequest } from '@axomaster/card-model'
+import type { Settings, GiftBoostersRequest } from '@axomaster/card-model'
 import { get, post, put, errorMessage } from '@/api/client'
 import { useToast } from '@/composables/useToast'
+import { formatDuration } from '@/lib/format'
 import GiftForm from '@/components/players/GiftForm.vue'
 
 const toast = useToast()
 
-const settings = ref<BoosterSettings | null>(null)
+const settings = ref<Settings | null>(null)
 const saved = ref('')
 const saving = ref(false)
 const gifting = ref(false)
@@ -24,9 +25,18 @@ const PRESETS = [
   { value: 7 * 86_400, label: 'Toutes les semaines' },
 ]
 
+/** Fenêtres du quota de créations proposées, en secondes. */
+const WINDOWS = [1, 3, 7, 14, 30].map((days) => days * 86_400)
+
+const windows = computed(() => {
+  const current = settings.value?.creationWindowSeconds
+  const values = current && !WINDOWS.includes(current) ? [...WINDOWS, current] : WINDOWS
+  return values.map((value) => ({ value, label: `Sur ${formatDuration(value)}` }))
+})
+
 onMounted(async () => {
   try {
-    settings.value = await get<BoosterSettings>('admin/settings')
+    settings.value = await get<Settings>('admin/settings')
     saved.value = JSON.stringify(settings.value)
   } catch (err) {
     toast.error(errorMessage(err))
@@ -45,7 +55,7 @@ async function save() {
   if (!settings.value) return
   saving.value = true
   try {
-    settings.value = await put<BoosterSettings>('admin/settings', settings.value)
+    settings.value = await put<Settings>('admin/settings', settings.value)
     saved.value = JSON.stringify(settings.value)
     toast.show('Réglages enregistrés')
   } catch (err) {
@@ -117,6 +127,42 @@ async function giftAll(request: Required<GiftBoostersRequest>) {
     </section>
 
     <section class="block">
+      <h2>Créations des joueurs</h2>
+      <p class="muted">
+        Nombre de cartes qu’un joueur peut proposer sur une période glissante (0 : création fermée).
+        Les admins ne sont pas limités. Les propositions arrivent en brouillon dans la galerie.
+      </p>
+
+      <form v-if="settings" class="form creation" @submit.prevent="save">
+        <div class="field">
+          <label for="settings-creation-limit">Cartes par joueur</label>
+          <input
+            id="settings-creation-limit"
+            v-model.number="settings.creationLimit"
+            class="input"
+            type="number"
+            min="0"
+            max="50"
+            required
+          />
+        </div>
+        <div class="field">
+          <label for="settings-creation-window">Période</label>
+          <select
+            id="settings-creation-window"
+            v-model.number="settings.creationWindowSeconds"
+            class="select"
+          >
+            <option v-for="w in windows" :key="w.value" :value="w.value">{{ w.label }}</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" type="submit" :disabled="!dirty || saving">
+          <Save /> Enregistrer
+        </button>
+      </form>
+    </section>
+
+    <section class="block">
       <h2>Offrir des boosters</h2>
       <p class="muted">
         Pour chaque compte actif, sans expiration. Pour un seul joueur : page Joueurs.
@@ -166,6 +212,10 @@ async function giftAll(request: Required<GiftBoostersRequest>) {
   gap: var(--space-3);
 }
 
+.form.creation {
+  grid-template-columns: 1fr 2fr auto;
+}
+
 .form .field {
   margin: 0;
 }
@@ -175,7 +225,8 @@ async function giftAll(request: Required<GiftBoostersRequest>) {
     padding: var(--space-5) var(--space-4) var(--space-6);
   }
 
-  .form {
+  .form,
+  .form.creation {
     grid-template-columns: 1fr;
   }
 }

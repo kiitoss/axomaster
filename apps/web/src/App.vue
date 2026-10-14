@@ -13,6 +13,7 @@ import {
   Menu,
   Monitor,
   Moon,
+  PenLine,
   Settings,
   Shield,
   SquarePlus,
@@ -21,6 +22,7 @@ import {
   Users,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
+import { useCardsStore } from '@/stores/cards'
 import { useCollectionStore } from '@/stores/collection'
 import { useTradesStore } from '@/stores/trades'
 import { useTheme } from '@/composables/useTheme'
@@ -35,6 +37,7 @@ import PlayerAvatar from '@/components/players/PlayerAvatar.vue'
 const auth = useAuthStore()
 const trades = useTradesStore()
 const collection = useCollectionStore()
+const cards = useCardsStore()
 const route = useRoute()
 const theme = useTheme()
 const push = usePush()
@@ -65,7 +68,7 @@ interface NavLink {
 }
 
 /** Sur mobile, l'éditeur occupe tout l'écran : il a sa propre barre. */
-const inEditor = computed(() => route.name === 'editor')
+const inEditor = computed(() => !!route.meta.editor)
 const isPublic = computed(() => !!route.meta.public)
 /** L'administrateur passe d'un espace à l'autre ; les joueurs n'ont que l'espace de jeu. */
 const adminSpace = computed(() => !!route.meta.admin)
@@ -74,7 +77,14 @@ const watermark = computed(() => !!route.meta.watermark)
 const links = computed<NavLink[]>(() =>
   adminSpace.value
     ? [
-        { to: '/admin', label: 'Galerie', icon: LayoutGrid, exact: true },
+        // Pastille : propositions de joueurs en attente de validation.
+        {
+          to: '/admin',
+          label: 'Galerie',
+          icon: LayoutGrid,
+          exact: true,
+          badge: cards.pendingProposals,
+        },
         { to: '/admin/editor', label: 'Créer', icon: SquarePlus },
         { to: '/admin/collections', label: 'Collections', icon: Library },
         { to: '/admin/joueurs', label: 'Joueurs', icon: Users },
@@ -92,6 +102,7 @@ const links = computed<NavLink[]>(() =>
           featured: true,
         },
         { to: '/classement', label: 'Classement', icon: Trophy },
+        { to: '/creations', label: 'Mes créations', icon: PenLine, inMenu: true },
       ],
 )
 

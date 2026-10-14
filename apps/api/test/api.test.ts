@@ -4,7 +4,11 @@ import {
   createBlankCard,
   type Boosters,
   type Catalogue,
+  type AdminCard,
+  type Card,
   type Leaderboard,
+  type MyCreation,
+  type MyCreations,
   type OwnershipEntry,
   type OpenBoosterResponse,
   type PlayerCard,
@@ -374,6 +378,141 @@ describe('administration', () => {
   })
 })
 
+describe('créations des joueurs', () => {
+  const draft = (name = 'Ma carte'): Card => ({
+    ...createBlankCard('pseudo', 'collaborateurs'),
+    name,
+    number: 42,
+  })
+  const create = (session: Session, card: Card = draft()) =>
+    client(session)<MyCreation>('PUT', `/creations/${card.id}`, card)
+  const mine = async (session: Session) =>
+    (await client(session)<MyCreations>('GET', '/creations')).data
+
+  it('crée une carte en brouillon signée par le joueur, sans numéro', async () => {
+    const res = await create(alice)
+    expect(res.status).toBe(200)
+    expect(res.data.status).toBe('pending')
+    expect(res.data.card).toMatchObject({ author: 'alice', number: null })
+
+    const { data: cards } = await client(admin)<AdminCard[]>('GET', '/admin/cards')
+    expect(cards[0]).toMatchObject({
+      status: 'draft',
+      createdBy: { id: alice.id, displayName: 'alice' },
+      rejectedAt: null,
+    })
+  })
+
+  it('bloque au-delà de la limite et annonce le prochain crédit', async () => {
+    expect((await mine(alice)).quota).toMatchObject({ limit: 3, used: 0, remaining: 3 })
+    for (let i = 0; i < 3; i++) expect((await create(alice)).status).toBe(200)
+    expect((await create(alice)).status).toBe(429)
+
+    const { quota, cards } = await mine(alice)
+    expect(cards).toHaveLength(3)
+    expect(quota).toMatchObject({ used: 3, remaining: 0, unlimited: false })
+    expect(quota.nextAt).not.toBeNull()
+    // Bob a son propre quota ; l'admin n'en a pas.
+    expect((await create(bob)).status).toBe(200)
+    for (let i = 0; i < 4; i++) expect((await create(admin)).status).toBe(200)
+    expect((await mine(admin)).quota.unlimited).toBe(true)
+  })
+
+  it('ne rend pas le crédit d’une carte supprimée', async () => {
+    const { data } = await create(alice)
+    expect((await client(alice)('DELETE', `/creations/${data.card.id}`)).status).toBe(204)
+    const { quota, cards } = await mine(alice)
+    expect(cards).toHaveLength(0)
+    expect(quota.used).toBe(1)
+  })
+
+  it('ferme la création quand la limite est à zéro', async () => {
+    const { data: settings } = await client(admin)<object>('GET', '/admin/settings')
+    const res = await client(admin)('PUT', '/admin/settings', { ...settings, creationLimit: 0 })
+    expect(res.status).toBe(200)
+    expect((await create(alice)).status).toBe(403)
+  })
+
+  it('protège les cartes des autres et les cartes validées', async () => {
+    const adminCard = await addCard(admin)
+    expect((await create(alice, { ...adminCard, name: 'Piratée' })).status).toBe(404)
+    const { data } = await create(alice)
+    expect((await create(bob, { ...data.card, name: 'Piratée' })).status).toBe(404)
+    expect((await client(bob)('DELETE', `/creations/${data.card.id}`)).status).toBe(404)
+
+    await client(admin)('POST', '/admin/cards/status', { ids: [data.card.id], status: 'published' })
+    expect((await create(alice, { ...data.card, name: 'Retouchée' })).status).toBe(409)
+    expect((await client(alice)('DELETE', `/creations/${data.card.id}`)).status).toBe(404)
+  })
+
+  it('cache la proposition aux joueurs, puis la montre face cachée une fois publiée', async () => {
+    const { data } = await create(alice)
+    const catalogue = async (session: Session) =>
+      (await client(session)<Catalogue>('GET', '/catalogue')).data.entries
+    expect(await catalogue(bob)).toEqual([])
+    expect(await catalogue(alice)).toEqual([])
+
+    await client(admin)('POST', '/admin/cards/status', { ids: [data.card.id], status: 'published' })
+    // Le créateur ne reçoit pas d'exemplaire : il doit la tirer comme tout le monde.
+    for (const session of [alice, bob])
+      expect(await catalogue(session)).toEqual([
+        { owned: false, id: data.card.id, number: null, categoryId: 'collaborateurs' },
+      ])
+    expect((await mine(alice)).cards[0]!.status).toBe('published')
+  })
+
+  it('refuse avec un motif, puis repasse en attente après correction', async () => {
+    const { data } = await create(alice)
+    const adminCard = await addCard(admin, 'common', false)
+    const res = await client(admin)<{ updated: number }>('POST', '/admin/cards/reject', {
+      ids: [data.card.id, adminCard.id],
+      note: 'Photo floue',
+    })
+    // Seules les propositions de joueurs peuvent être refusées.
+    expect(res.data.updated).toBe(1)
+    expect((await mine(alice)).cards[0]).toMatchObject({
+      status: 'rejected',
+      reviewNote: 'Photo floue',
+    })
+    const forbidden = await client(alice)('POST', '/admin/cards/reject', { ids: [data.card.id] })
+    expect(forbidden.status).toBe(403)
+
+    expect((await create(alice, { ...data.card, name: 'Nette' })).status).toBe(200)
+    const { quota, cards } = await mine(alice)
+    expect(cards[0]).toMatchObject({ status: 'pending', reviewNote: null })
+    expect(quota.used).toBe(1)
+  })
+
+  it('laisse l’admin modifier et publier une carte refusée', async () => {
+    const { data } = await create(alice)
+    const api = client(admin)
+    await api('POST', '/admin/cards/reject', { ids: [data.card.id], note: 'Trop long' })
+    const edited = await api<AdminCard>('PUT', `/admin/cards/${data.card.id}`, {
+      ...data.card,
+      name: 'Raccourcie',
+      number: 7,
+    })
+    expect(edited.data.createdBy?.id).toBe(alice.id)
+    await api('POST', '/admin/cards/status', { ids: [data.card.id], status: 'published' })
+    expect((await mine(alice)).cards[0]).toMatchObject({
+      status: 'published',
+      reviewNote: null,
+      card: { name: 'Raccourcie', number: 7 },
+    })
+  })
+
+  it('accepte les images des joueurs, sans leur laisser choisir l’identifiant', async () => {
+    const send = (path: string, method: string) =>
+      SELF.fetch(`${BASE}${path}`, {
+        method,
+        headers: { Cookie: alice.cookie, 'Content-Type': 'image/webp' },
+        body: new Uint8Array([5, 6]),
+      })
+    expect((await send('/images', 'POST')).status).toBe(201)
+    expect((await send('/admin/images/abc', 'PUT')).status).toBe(403)
+  })
+})
+
 describe('notifications push', () => {
   /** Messages reçus par endpoint ; le statut renvoyé par le faux service de push est réglable. */
   let inbox: Map<string, NotificationPayload[]>
@@ -522,6 +661,43 @@ describe('notifications push', () => {
     expect(received(bobTel).every((n) => n.title === 'Nouvelle proposition d’échange')).toBe(true)
   })
 
+  it('prévient le créateur de la validation et du refus de ses cartes', async () => {
+    const aliceTel = await subscribe(alice, 'alice')
+    const bobTel = await subscribe(bob, 'bob')
+    const ids: string[] = []
+    for (let i = 0; i < 3; i++) {
+      const card = createBlankCard('alice', null)
+      await client(alice)('PUT', `/creations/${card.id}`, card)
+      ids.push(card.id)
+    }
+    const adminCard = await addCard(admin, 'common', false)
+
+    const api = client(admin)
+    const publish = (cardIds: (string | undefined)[]) =>
+      api('POST', '/admin/cards/status', { ids: cardIds, status: 'published' })
+    await publish([ids[0], ids[1], adminCard.id])
+    await waitFor(() =>
+      expect(received(aliceTel)).toEqual([
+        {
+          title: '2 de vos cartes sont validées !',
+          body: 'Elles rejoignent le jeu : à vous de les trouver dans un booster.',
+          url: './#/creations',
+          tag: 'creations-published',
+        },
+      ]),
+    )
+    // Republier une carte déjà publiée ne renotifie pas.
+    await publish([ids[0]])
+    await api('POST', '/admin/cards/reject', { ids: [ids[2]], note: 'Doublon' })
+    await waitFor(() =>
+      expect(received(aliceTel).map((n) => n.body)).toEqual([
+        'Elles rejoignent le jeu : à vous de les trouver dans un booster.',
+        '« Doublon »',
+      ]),
+    )
+    expect(received(bobTel)).toEqual([])
+  })
+
   it('oublie un abonnement expiré', async () => {
     const endpoint = await subscribe(alice, 'ancien')
     pushStatus = 410
@@ -536,7 +712,13 @@ describe('notifications push', () => {
 
     beforeEach(async () => {
       // Recharge toutes les heures, réserve de 3.
-      await client(admin)('PUT', '/admin/settings', { intervalSeconds: 3600, maxStock: 3, size: 5 })
+      const { data: settings } = await client(admin)<object>('GET', '/admin/settings')
+      const res = await client(admin)('PUT', '/admin/settings', {
+        ...settings,
+        intervalSeconds: 3600,
+        maxStock: 3,
+      })
+      expect(res.status).toBe(200)
     })
 
     async function setQuota(userId: string, anchor: string, notifyAt: string | null) {

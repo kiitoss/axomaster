@@ -22,8 +22,12 @@ import type {
   catalogueSchema,
   createTradeRequestSchema,
   createUserRequestSchema,
+  creationQuotaSchema,
+  creationStatusSchema,
   giftBoostersRequestSchema,
   leaderboardSchema,
+  myCreationSchema,
+  myCreationsSchema,
   openBoosterResponseSchema,
   ownedCardSchema,
   ownershipEntrySchema,
@@ -31,8 +35,10 @@ import type {
   playerSchema,
   pushConfigSchema,
   pushSubscriptionSchema,
+  rejectRequestSchema,
   roleSchema,
   sessionUserSchema,
+  settingsSchema,
   sharedCardSchema,
   tradeSchema,
   tradeStatusSchema,
@@ -69,9 +75,15 @@ export type PlayerCard = z.infer<typeof playerCardSchema>
 export type OwnershipEntry = z.infer<typeof ownershipEntrySchema>
 export type Leaderboard = z.infer<typeof leaderboardSchema>
 export type BoosterSettings = z.infer<typeof boosterSettingsSchema>
+export type Settings = z.infer<typeof settingsSchema>
 export type BoosterStockInfo = z.infer<typeof boosterStockSchema>
 export type Boosters = z.infer<typeof boostersSchema>
 export type OpenBoosterResponse = z.infer<typeof openBoosterResponseSchema>
+export type CreationStatus = z.infer<typeof creationStatusSchema>
+export type CreationQuotaInfo = z.infer<typeof creationQuotaSchema>
+export type MyCreation = z.infer<typeof myCreationSchema>
+export type MyCreations = z.infer<typeof myCreationsSchema>
+export type RejectRequest = z.input<typeof rejectRequestSchema>
 export type TradeStatus = z.infer<typeof tradeStatusSchema>
 export type Trade = z.infer<typeof tradeSchema>
 export type CreateTradeRequest = z.input<typeof createTradeRequestSchema>

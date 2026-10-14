@@ -1,13 +1,25 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronLeft, ChevronRight, Copy, Image, Pencil, Trash2, X } from 'lucide-vue-next'
+import {
+  Ban,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Eye,
+  EyeOff,
+  Image,
+  Pencil,
+  Trash2,
+  X,
+} from 'lucide-vue-next'
 import type { Card } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
 import { useToast } from '@/composables/useToast'
 import { exportCardPng } from '@/lib/exportPng'
 import { errorMessage } from '@/api/client'
 import CardView from '@/components/card/CardView.vue'
+import RejectDialog from '@/components/gallery/RejectDialog.vue'
 
 const props = defineProps<{
   cards: Card[]
@@ -34,6 +46,27 @@ const sourceLabel = computed(() => {
   if (c.source.kind === 'imported') return `Importée de ${c.source.from}`
   return 'Créée ici'
 })
+
+const info = computed(() => (card.value ? store.infoOf(card.value.id) : undefined))
+const statusLabel = computed(() => {
+  const c = card.value
+  if (!c || store.statusOf(c.id) === 'published') return 'Publiée'
+  if (store.isPendingProposal(c.id)) return 'À valider'
+  return info.value?.rejectedAt ? 'Refusée' : 'Brouillon'
+})
+const rejecting = ref(false)
+
+async function toggleStatus() {
+  const c = card.value
+  if (!c) return
+  const next = store.statusOf(c.id) === 'published' ? 'draft' : 'published'
+  try {
+    await store.setStatus([c.id], next)
+    toast.show(next === 'published' ? 'Carte publiée' : 'Carte repassée en brouillon')
+  } catch (err) {
+    toast.error(errorMessage(err))
+  }
+}
 
 watch(card, (c) => {
   if (c) return
@@ -73,6 +106,8 @@ function closeFromBackdrop() {
 }
 
 function onKey(e: KeyboardEvent) {
+  // Le dialogue de refus gère ses propres touches.
+  if (rejecting.value) return
   if (e.key === 'Escape') {
     // Ne ferme pas aussi le dialogue modal sous-jacent.
     e.preventDefault()
@@ -185,9 +220,17 @@ async function remove() {
               <dt>Provenance</dt>
               <dd>{{ sourceLabel }}</dd>
             </div>
+            <div v-if="!readonly && info?.createdBy">
+              <dt>Proposée par</dt>
+              <dd>{{ info.createdBy.displayName }}</dd>
+            </div>
             <div v-if="!readonly">
               <dt>Statut</dt>
-              <dd>{{ store.statusOf(card.id) === 'published' ? 'Publiée' : 'Brouillon' }}</dd>
+              <dd>{{ statusLabel }}</dd>
+            </div>
+            <div v-if="!readonly && statusLabel === 'Refusée'">
+              <dt>Motif</dt>
+              <dd>{{ info?.reviewNote || '—' }}</dd>
             </div>
             <div v-if="quantities">
               <dt>Exemplaires</dt>
@@ -200,6 +243,23 @@ async function remove() {
           </dl>
           <div class="actions">
             <template v-if="!readonly">
+              <button
+                class="btn btn-sm"
+                :class="{ 'btn-primary': statusLabel !== 'Publiée' }"
+                type="button"
+                @click="toggleStatus"
+              >
+                <template v-if="statusLabel === 'Publiée'"><EyeOff /> Retirer du jeu</template>
+                <template v-else><Eye /> Publier</template>
+              </button>
+              <button
+                v-if="info?.createdBy && statusLabel !== 'Publiée'"
+                class="btn btn-sm"
+                type="button"
+                @click="rejecting = true"
+              >
+                <Ban /> Refuser
+              </button>
               <button class="btn btn-sm" type="button" @click="edit"><Pencil /> Modifier</button>
               <button class="btn btn-sm" type="button" @click="duplicate">
                 <Copy /> Dupliquer
@@ -222,6 +282,13 @@ async function remove() {
       >
         <ChevronRight />
       </button>
+
+      <RejectDialog
+        v-if="!readonly"
+        :open="rejecting"
+        :ids="card ? [card.id] : []"
+        @close="rejecting = false"
+      />
     </div>
   </Teleport>
 </template>

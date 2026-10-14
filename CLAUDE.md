@@ -31,6 +31,7 @@ Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
   - `pack.ts` : `createPack` / `parsePack` + migrations de version.
   - `booster.ts` (`drawBooster`), `boosterQuota.ts` (stock périodique + bonus, logique pure).
     Un seul booster, tiré parmi toutes les cartes publiées ; le quota est global par joueur.
+    `creationQuota.ts` : quota de créations de cartes des joueurs (fenêtre glissante).
   - `notifications.ts` : textes des notifications push, partagés par le Worker et l'aperçu admin.
   - Consommé directement en source (`exports: ./src/index.ts`), pas d'étape de build.
 - `apps/api` — Cloudflare Worker, Hono, D1. Un seul Worker sert aussi `apps/web/dist`
@@ -39,7 +40,8 @@ Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
     migration appliquée).
   - `src/routes/` : `auth` (login/logout/me), `admin` (cartes, catégories, joueurs, réglages,
     images, import, cadeaux), `player` (catégories, catalogue, boosters, joueurs, images),
-    `trades`, `push` (clé publique, abonnements des appareils).
+    `trades`, `push` (clé publique, abonnements des appareils), `creations` (cartes proposées
+    par le joueur connecté et son quota).
   - `src/lib/` : sessions et mots de passe (PBKDF2 WebCrypto), accès D1, stockage d'images
     (R2 si le binding `IMAGES` existe, sinon table D1), `webpush.ts` (VAPID + chiffrement
     aes128gcm en WebCrypto, sans dépendance), `notify.ts` (`notifyUsers` / `notifyAllUsers`).
@@ -51,7 +53,9 @@ Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
   - Routeur : `meta.public` / `meta.admin` + garde globale. Espace joueur (`/`, `/boosters`,
     `/echanges`) et espace admin (`/admin/...`), la navigation suit l'espace de la route.
   - Stores : `auth`, `cards` (catégories pour tous, cartes complètes pour l'admin), `collection`
-    (catalogue + boosters du joueur), `trades`.
+    (catalogue + boosters du joueur), `trades`, `creations` (« Mes créations » du joueur).
+  - `views/EditorView.vue` sert aux deux espaces (`/admin/editor`, `/creations/editor`) ; en
+    espace joueur, numéro et collections sont masqués (`route.meta.admin`).
   - `components/card/CardView.vue` : **rendu unique** d'une carte, partout. Dessinée à
     630 × 880 px puis mise à l'échelle. Le dos est `components/booster/CardBack.vue`.
   - `components/editor/` : état partagé via `provideEditor` / `useEditor`. `useHistory` :
@@ -74,6 +78,13 @@ Monorepo pnpm (`pnpm-workspace.yaml`), TypeScript strict (`tsconfig.base.json`).
 - **Atomicité D1** : une opération multi-écritures passe par un seul `db.batch()` ; les gardes
   reposent sur les contraintes `CHECK` (quantité ≥ 0, statut d'échange, bonus ≥ 0) qui annulent
   tout le batch. Utiliser `inventoryDelta()` pour toucher aux inventaires.
+- **Créations des joueurs** : tout joueur peut proposer des cartes (`cards.created_by`), dans la
+  limite de `creation_limit` créations sur `creation_window_seconds` (journal `card_creations` :
+  supprimer une proposition ne rend pas le crédit ; admins non limités). Elles arrivent en
+  brouillon ; l'admin les publie, les refuse avec motif (`rejected_at`, `review_note`, la carte
+  reste en brouillon) ou les modifie. Le créateur ne reçoit pas d'exemplaire : publiée, sa carte
+  suit la règle commune (face cachée tant qu'il ne l'a pas tirée). Signature et numéro sont fixés
+  par le serveur ; un joueur ne peut plus modifier une carte publiée.
 - **Notifications push** : envoyées depuis les routes via `c.executionCtx.waitUntil(notifyUsers(…))`
   pour ne pas retarder la réponse ; un échec d'envoi ne fait jamais échouer l'action. Sans les
   secrets `VAPID_*`, tout est désactivé silencieusement. Les textes se construisent avec les

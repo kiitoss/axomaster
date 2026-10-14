@@ -21,6 +21,7 @@ export const GIFT_MESSAGE_MAX = 140
 
 const BOOSTERS_URL = './#/boosters'
 const TRADES_URL = './#/echanges'
+const CREATIONS_URL = './#/creations'
 
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`
 
@@ -74,4 +75,28 @@ export function tradeResolvedNotification(
   }
   const [title, body] = texts[outcome]
   return { title, body, url: TRADES_URL, tag: `trade-${tradeId}` }
+}
+
+export function creationsPublishedNotification(count: number): NotificationPayload {
+  return {
+    title: count > 1 ? `${count} de vos cartes sont validées !` : 'Votre carte est validée !',
+    body:
+      count > 1
+        ? 'Elles rejoignent le jeu : à vous de les trouver dans un booster.'
+        : 'Elle rejoint le jeu : à vous de la trouver dans un booster.',
+    url: CREATIONS_URL,
+    tag: 'creations-published',
+  }
+}
+
+export function creationsRejectedNotification(count: number, note: string): NotificationPayload {
+  const text = note.trim()
+  return {
+    title: count > 1 ? `${count} de vos cartes sont refusées` : 'Votre carte est refusée',
+    body: text
+      ? `« ${text} »`
+      : 'Consultez « Mes créations » pour la corriger et la proposer à nouveau.',
+    url: CREATIONS_URL,
+    tag: 'creations-rejected',
+  }
 }

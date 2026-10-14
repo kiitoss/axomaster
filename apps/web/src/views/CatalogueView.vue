@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { Gift } from 'lucide-vue-next'
+import { Gift, PenLine } from 'lucide-vue-next'
 import type { Card, CatalogueEntry, Category } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
 import { useCollectionStore } from '@/stores/collection'
@@ -128,6 +128,7 @@ function select(entry: CatalogueEntry) {
             À découvrir
           </button>
         </div>
+        <RouterLink to="/creations" class="btn btn-sm"><PenLine /> Mes créations</RouterLink>
         <RouterLink to="/boosters" class="btn btn-primary btn-sm">
           <Gift /> Ouvrir un booster
         </RouterLink>

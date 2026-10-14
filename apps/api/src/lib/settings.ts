@@ -1,16 +1,24 @@
-import type { BoosterSettings } from '@axomaster/card-model'
+import type { Settings } from '@axomaster/card-model'
 
 const KEYS = {
   intervalSeconds: 'booster_interval_seconds',
   maxStock: 'booster_max_stock',
   size: 'booster_size',
-} as const satisfies Record<keyof BoosterSettings, string>
+  creationLimit: 'creation_limit',
+  creationWindowSeconds: 'creation_window_seconds',
+} as const satisfies Record<keyof Settings, string>
 
-const DEFAULTS: BoosterSettings = { intervalSeconds: 86_400, maxStock: 3, size: 5 }
+const DEFAULTS: Settings = {
+  intervalSeconds: 86_400,
+  maxStock: 3,
+  size: 5,
+  creationLimit: 3,
+  creationWindowSeconds: 7 * 86_400,
+}
 
-const FIELDS = Object.entries(KEYS) as [keyof BoosterSettings, string][]
+const FIELDS = Object.entries(KEYS) as [keyof Settings, string][]
 
-export async function loadSettings(db: D1Database): Promise<BoosterSettings> {
+export async function loadSettings(db: D1Database): Promise<Settings> {
   const { results } = await db
     .prepare('SELECT key, value FROM settings')
     .all<{ key: string; value: string }>()
@@ -23,7 +31,7 @@ export async function loadSettings(db: D1Database): Promise<BoosterSettings> {
   return settings
 }
 
-export async function saveSettings(db: D1Database, settings: BoosterSettings) {
+export async function saveSettings(db: D1Database, settings: Settings) {
   await db.batch(
     FIELDS.map(([field, key]) =>
       db

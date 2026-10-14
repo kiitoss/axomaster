@@ -4,6 +4,7 @@ import { notifyBoosterRefills } from './jobs/boosterRefills'
 import { HttpError } from './lib/http'
 import { adminRoutes } from './routes/admin'
 import { authRoutes } from './routes/auth'
+import { creationRoutes } from './routes/creations'
 import { playerRoutes } from './routes/player'
 import { pushRoutes } from './routes/push'
 import { tradeRoutes } from './routes/trades'
@@ -17,6 +18,7 @@ const app = new Hono<AppEnv>().basePath('/api')
 app.route('/auth', authRoutes)
 app.route('/admin', adminRoutes)
 app.route('/trades', tradeRoutes)
+app.route('/creations', creationRoutes)
 app.route('/push', pushRoutes)
 app.route('/', playerRoutes)
 

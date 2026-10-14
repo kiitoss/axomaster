@@ -80,10 +80,23 @@ export const updateUserRequestSchema = z.object({
 export const CARD_STATUSES = ['draft', 'published'] as const
 export const cardStatusSchema = z.enum(CARD_STATUSES)
 
+/** Longueur maximale du motif de refus d'une carte proposée par un joueur. */
+export const REVIEW_NOTE_MAX = 400
+
 export const adminCardSchema = z.object({
   card: cardSchema,
   status: cardStatusSchema,
   publishedAt: isoDate.nullable(),
+  /** Joueur à l'origine de la carte ; `null` pour une carte créée ou importée par un admin. */
+  createdBy: playerSchema.nullable(),
+  /** Refus d'une proposition (la carte reste en brouillon) ; effacé à la publication. */
+  rejectedAt: isoDate.nullable(),
+  reviewNote: z.string().nullable(),
+})
+
+export const rejectRequestSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(500),
+  note: z.string().trim().max(REVIEW_NOTE_MAX).default(''),
 })
 
 export const importRequestSchema = z.object({
@@ -153,6 +166,20 @@ export const boosterSettingsSchema = z.object({
   size: z.number().int().min(1).max(15),
 })
 
+export const creationSettingsSchema = z.object({
+  /** Créations de cartes autorisées par joueur sur la fenêtre ; 0 ferme la création. */
+  creationLimit: z.number().int().min(0).max(50),
+  /** Fenêtre glissante du quota de créations, en secondes. */
+  creationWindowSeconds: z
+    .number()
+    .int()
+    .min(3600)
+    .max(90 * 86_400),
+})
+
+/** Réglages du jeu modifiables par l'admin. */
+export const settingsSchema = boosterSettingsSchema.extend(creationSettingsSchema.shape)
+
 export const boosterStockSchema = z.object({
   periodic: z.number().int(),
   bonus: z.number().int(),
@@ -179,6 +206,34 @@ export const giftBoostersRequestSchema = z.object({
   count: z.number().int().min(1).max(20),
   /** Message affiché dans la notification push (texte par défaut si vide). */
   message: z.string().trim().max(GIFT_MESSAGE_MAX).default(''),
+})
+
+// ---------- Créations des joueurs ----------
+
+/** État d'une carte proposée, vu par son créateur. */
+export const CREATION_STATUSES = ['pending', 'rejected', 'published'] as const
+export const creationStatusSchema = z.enum(CREATION_STATUSES)
+
+export const creationQuotaSchema = z.object({
+  limit: z.number().int(),
+  windowSeconds: z.number().int(),
+  used: z.number().int(),
+  remaining: z.number().int(),
+  nextAt: isoDate.nullable(),
+  /** Admin : non soumis au quota. */
+  unlimited: z.boolean(),
+})
+
+export const myCreationSchema = z.object({
+  card: cardSchema,
+  status: creationStatusSchema,
+  reviewNote: z.string().nullable(),
+  publishedAt: isoDate.nullable(),
+})
+
+export const myCreationsSchema = z.object({
+  quota: creationQuotaSchema,
+  cards: z.array(myCreationSchema),
 })
 
 // ---------- Échanges ----------

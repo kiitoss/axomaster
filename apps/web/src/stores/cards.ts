@@ -16,6 +16,9 @@ import { getImageDataUrl, putImageDataUrl } from '@/storage/imageStore'
 import { clone } from '@/lib/clone'
 import { useAuthStore } from './auth'
 
+/** Tout ce que l'admin sait d'une carte, hormis son contenu. */
+export type CardInfo = Omit<AdminCard, 'card'>
+
 export type DuplicateStrategy = 'skip' | 'replace' | 'copy'
 
 export interface ImportReport {
@@ -32,7 +35,7 @@ export const useCardsStore = defineStore('cards', () => {
   const auth = useAuthStore()
 
   const cards = ref<Card[]>([])
-  const statuses = ref<Record<string, CardStatus>>({})
+  const infos = ref<Record<string, CardInfo>>({})
   const categories = ref<Category[]>([])
   let categoriesLoaded: Promise<void> | null = null
   let cardsLoaded: Promise<void> | null = null
@@ -60,7 +63,7 @@ export const useCardsStore = defineStore('cards', () => {
     if (!cardsLoaded || force) {
       cardsLoaded = get<AdminCard[]>('admin/cards').then((list) => {
         cards.value = list.map((entry) => entry.card)
-        statuses.value = Object.fromEntries(list.map((entry) => [entry.card.id, entry.status]))
+        infos.value = Object.fromEntries(list.map(({ card, ...info }) => [card.id, info]))
       })
       cardsLoaded.catch(() => (cardsLoaded = null))
     }
@@ -76,14 +79,29 @@ export const useCardsStore = defineStore('cards', () => {
   }
 
   function statusOf(id: string): CardStatus {
-    return statuses.value[id] ?? 'draft'
+    return infos.value[id]?.status ?? 'draft'
   }
+
+  function infoOf(id: string): CardInfo | undefined {
+    return infos.value[id]
+  }
+
+  /** Proposition de joueur en attente de validation (ni publiée, ni refusée). */
+  function isPendingProposal(id: string) {
+    const info = infos.value[id]
+    return !!info?.createdBy && info.status === 'draft' && !info.rejectedAt
+  }
+
+  const pendingProposals = computed(
+    () => cards.value.filter((card) => isPendingProposal(card.id)).length,
+  )
 
   function storeLocally(entry: AdminCard) {
     const index = cards.value.findIndex((c) => c.id === entry.card.id)
     if (index === -1) cards.value.unshift(entry.card)
     else cards.value[index] = entry.card
-    statuses.value[entry.card.id] = entry.status
+    const { card, ...info } = entry
+    infos.value[card.id] = info
   }
 
   async function saveCard(card: Card) {
@@ -93,12 +111,19 @@ export const useCardsStore = defineStore('cards', () => {
     return saved.card
   }
 
-  async function removeCard(id: string) {
-    await del(`admin/cards/${encodeURIComponent(id)}`)
-    cards.value = cards.value.filter((c) => c.id !== id)
-    delete statuses.value[id]
-    await collectGarbage()
+  async function removeCards(ids: string[]) {
+    try {
+      for (const id of ids) {
+        await del(`admin/cards/${encodeURIComponent(id)}`)
+        cards.value = cards.value.filter((c) => c.id !== id)
+        delete infos.value[id]
+      }
+    } finally {
+      await collectGarbage()
+    }
   }
+
+  const removeCard = (id: string) => removeCards([id])
 
   async function duplicateCard(id: string) {
     const source = getCard(id)
@@ -120,7 +145,26 @@ export const useCardsStore = defineStore('cards', () => {
   async function setStatus(ids: string[], status: CardStatus) {
     if (!ids.length) return
     await post('admin/cards/status', { ids, status })
-    for (const id of ids) statuses.value[id] = status
+    for (const id of ids) {
+      const info = infos.value[id]
+      if (!info) continue
+      info.status = status
+      // Côté serveur, publier efface un éventuel refus.
+      if (status === 'published') Object.assign(info, { rejectedAt: null, reviewNote: null })
+    }
+  }
+
+  /** Refuse des propositions de joueurs ; les autres cartes sont ignorées par le serveur. */
+  async function rejectCards(ids: string[], note: string) {
+    if (!ids.length) return 0
+    const { updated } = await post<{ updated: number }>('admin/cards/reject', { ids, note })
+    const now = nowIso()
+    for (const id of ids) {
+      const info = infos.value[id]
+      if (info?.createdBy && info.status === 'draft')
+        Object.assign(info, { rejectedAt: now, reviewNote: note.trim() || null })
+    }
+    return updated
   }
 
   function nextNumber(categoryId: string | null) {
@@ -223,7 +267,7 @@ export const useCardsStore = defineStore('cards', () => {
 
   return {
     cards,
-    statuses,
+    infos,
     categories,
     authorName,
     authors,
@@ -232,10 +276,15 @@ export const useCardsStore = defineStore('cards', () => {
     getCard,
     getCategory,
     statusOf,
+    infoOf,
+    isPendingProposal,
+    pendingProposals,
     saveCard,
     removeCard,
+    removeCards,
     duplicateCard,
     setStatus,
+    rejectCards,
     nextNumber,
     addCategory,
     updateCategory,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import {
   AlignCenter,
   AlignLeft,
@@ -21,6 +21,8 @@ import NumberField from '@/components/ui/NumberField.vue'
 
 const store = useCardsStore()
 const toast = useToast()
+// Un joueur propose une carte : numéro et collections restent du ressort de l'admin.
+const admin = computed(() => !!useRoute().meta.admin)
 const { draft, selected, selectedLayer, removeLayer, duplicateLayer } = useEditor()
 
 const card = computed(() => draft.value)
@@ -116,7 +118,7 @@ const WEIGHTS = [
         <span class="counter muted">{{ card.description.length }} / 220 conseillés</span>
       </div>
 
-      <div class="grid-2">
+      <div :class="admin ? 'grid-2' : undefined">
         <div class="field">
           <label for="card-cat">Collection</label>
           <select id="card-cat" v-model="card.categoryId" class="select">
@@ -124,7 +126,7 @@ const WEIGHTS = [
             <option v-for="c in store.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
         </div>
-        <div class="field">
+        <div v-if="admin" class="field">
           <label for="card-number">Numéro</label>
           <div class="row">
             <input
@@ -147,7 +149,9 @@ const WEIGHTS = [
           </div>
         </div>
       </div>
-      <RouterLink to="/collections" class="manage muted">Gérer les collections →</RouterLink>
+      <RouterLink v-if="admin" to="/admin/collections" class="manage muted">
+        Gérer les collections →
+      </RouterLink>
 
       <div class="field">
         <span class="label">Rareté</span>
@@ -164,6 +168,7 @@ const WEIGHTS = [
             <i />{{ RARITY_INFO[r].label }}
           </button>
         </div>
+        <span v-if="!admin" class="counter muted">Une proposition : l’admin peut l’ajuster.</span>
       </div>
     </template>
 

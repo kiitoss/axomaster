@@ -1,13 +1,13 @@
-import { newId } from '@axomaster/card-model'
-import { apiUrl, put } from '@/api/client'
+import { apiUrl, post, put } from '@/api/client'
 
 /**
  * Les images sont stockées par l'API (R2 ou D1) ; les cartes ne gardent que leur identifiant.
  * Un identifiant désigne toujours le même contenu : le navigateur peut les mettre en cache.
  */
 
-export async function putImage(blob: Blob, id: string = newId()): Promise<string> {
-  await put(`admin/images/${encodeURIComponent(id)}`, blob)
+/** Envoie une image (admins et joueurs) ; l'identifiant est tiré par le serveur. */
+export async function putImage(blob: Blob): Promise<string> {
+  const { id } = await post<{ id: string }>('images', blob)
   return id
 }
 
@@ -23,8 +23,9 @@ export async function getImageDataUrl(id: string): Promise<string | null> {
 }
 
 export async function putImageDataUrl(id: string, dataUrl: string): Promise<void> {
+  // Import d'un paquet (admin) : l'image garde l'identifiant référencé par ses cartes.
   const blob = await (await fetch(dataUrl)).blob()
-  await putImage(blob, id)
+  await put(`admin/images/${encodeURIComponent(id)}`, blob)
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {

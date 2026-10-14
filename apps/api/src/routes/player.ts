@@ -7,6 +7,7 @@ import {
   type Card,
   type CatalogueEntry,
   type Category,
+  newId,
   type Leaderboard,
   type OpenBoosterResponse,
 } from '@axomaster/card-model'
@@ -22,7 +23,7 @@ import {
   type CardRow,
 } from '../lib/db'
 import { HttpError } from '../lib/http'
-import { imageStorage } from '../lib/images'
+import { imageStorage, uploadImage } from '../lib/images'
 import { loadSettings } from '../lib/settings'
 
 async function listCategories(db: D1Database): Promise<Category[]> {
@@ -235,6 +236,12 @@ export const playerRoutes = new Hono<AppEnv>()
   })
 
   // ---------- Images ----------
+
+  /**
+   * Envoi d'une image (éditeur de carte, admins et joueurs). L'identifiant est tiré par le
+   * serveur : un joueur ne peut pas remplacer une image existante.
+   */
+  .post('/images', async (c) => uploadImage(c.env, newId(), c.req.raw))
 
   .get('/images/:id', async (c) => {
     const image = await imageStorage(c.env).get(c.req.param('id'))

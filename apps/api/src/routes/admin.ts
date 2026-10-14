@@ -1,17 +1,20 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import {
-  boosterSettingsSchema,
   cardImageIds,
   cardSchema,
   cardStatusSchema,
   categorySchema,
   createUserRequestSchema,
+  creationsPublishedNotification,
+  creationsRejectedNotification,
   giftBoostersRequestSchema,
   giftNotification,
   importRequestSchema,
   initialBoosterAnchor,
   newId,
+  rejectRequestSchema,
+  settingsSchema,
   updateUserRequestSchema,
   type AdminUser,
   type OwnershipEntry,
@@ -19,9 +22,17 @@ import {
 } from '@axomaster/card-model'
 import type { AppEnv } from '../env'
 import { requireAdmin, toSessionUser, type UserRow } from '../lib/auth'
-import { getAdminCard, parseCard, toAdminCard, upsertCard, type CardRow } from '../lib/db'
+import {
+  ADMIN_CARD_SELECT,
+  getAdminCard,
+  parseCard,
+  toAdminCard,
+  upsertCard,
+  type AdminCardRow,
+  type CardRow,
+} from '../lib/db'
 import { HttpError, nowIso, placeholders, readJson } from '../lib/http'
-import { imageStorage, MAX_IMAGE_BYTES } from '../lib/images'
+import { imageStorage, uploadImage } from '../lib/images'
 import { hashPassword } from '../lib/password'
 import { notifyAllUsers, notifyUsers } from '../lib/notify'
 import { loadSettings, saveSettings } from '../lib/settings'
@@ -35,6 +46,33 @@ const categoryInputSchema = categorySchema.omit({ id: true }).extend({
   name: z.string().trim().min(1).max(80),
 })
 
+/** Découpe une liste d'identifiants pour rester sous la limite de paramètres de D1. */
+function chunks(ids: string[], size = 90) {
+  const result: string[][] = []
+  for (let i = 0; i < ids.length; i += size) result.push(ids.slice(i, i + size))
+  return result
+}
+
+/**
+ * Nombre de propositions de joueurs, parmi `ids`, encore en brouillon, par créateur : sert à
+ * prévenir chaque joueur de la validation ou du refus de ses cartes.
+ */
+async function draftsByCreator(db: D1Database, ids: string[]) {
+  const counts = new Map<string, number>()
+  for (const chunk of chunks(ids)) {
+    const { results } = await db
+      .prepare(
+        `SELECT created_by, COUNT(*) AS n FROM cards
+         WHERE id IN (${placeholders(chunk.length)}) AND status = 'draft' AND created_by IS NOT NULL
+         GROUP BY created_by`,
+      )
+      .bind(...chunk)
+      .all<{ created_by: string; n: number }>()
+    for (const row of results) counts.set(row.created_by, (counts.get(row.created_by) ?? 0) + row.n)
+  }
+  return counts
+}
+
 /** Délai avant qu'une image non référencée soit considérée comme orpheline. */
 const IMAGE_GRACE_MS = 6 * 3600_000
 
@@ -45,8 +83,8 @@ export const adminRoutes = new Hono<AppEnv>()
 
   .get('/cards', async (c) => {
     const { results } = await c.env.DB.prepare(
-      'SELECT * FROM cards ORDER BY updated_at DESC',
-    ).all<CardRow>()
+      `${ADMIN_CARD_SELECT} ORDER BY c.updated_at DESC`,
+    ).all<AdminCardRow>()
     return c.json(results.map(toAdminCard))
   })
   .put('/cards/:id', async (c) => {
@@ -63,18 +101,43 @@ export const adminRoutes = new Hono<AppEnv>()
   .post('/cards/status', async (c) => {
     const { ids, status } = await readJson(c, statusRequestSchema)
     const now = nowIso()
-    const statements = []
-    for (let i = 0; i < ids.length; i += 90) {
-      const chunk = ids.slice(i, i + 90)
-      statements.push(
+    // Publier une proposition efface son éventuel refus. Les `?` qui suivent `?2` sont
+    // numérotés à partir de 3 par SQLite.
+    const published =
+      status === 'published' ? await draftsByCreator(c.env.DB, ids) : new Map<string, number>()
+    await c.env.DB.batch(
+      chunks(ids).map((chunk) =>
         c.env.DB.prepare(
-          `UPDATE cards SET status = ?, published_at = CASE WHEN ? = 'published' THEN COALESCE(published_at, ?) ELSE NULL END
+          `UPDATE cards SET status = ?1,
+             published_at = CASE WHEN ?1 = 'published' THEN COALESCE(published_at, ?2) ELSE NULL END,
+             rejected_at = CASE WHEN ?1 = 'published' THEN NULL ELSE rejected_at END,
+             review_note = CASE WHEN ?1 = 'published' THEN NULL ELSE review_note END
            WHERE id IN (${placeholders(chunk.length)})`,
-        ).bind(status, status, now, ...chunk),
-      )
-    }
-    await c.env.DB.batch(statements)
+        ).bind(status, now, ...chunk),
+      ),
+    )
+    for (const [userId, count] of published)
+      c.executionCtx.waitUntil(notifyUsers(c.env, [userId], creationsPublishedNotification(count)))
     return c.json({ updated: ids.length })
+  })
+  /** Refuse des propositions de joueurs (les autres cartes sont ignorées) : elles restent en brouillon. */
+  .post('/cards/reject', async (c) => {
+    const { ids, note } = await readJson(c, rejectRequestSchema)
+    const rejected = await draftsByCreator(c.env.DB, ids)
+    const now = nowIso()
+    await c.env.DB.batch(
+      chunks(ids).map((chunk) =>
+        c.env.DB.prepare(
+          `UPDATE cards SET rejected_at = ?, review_note = ?
+           WHERE id IN (${placeholders(chunk.length)}) AND status = 'draft' AND created_by IS NOT NULL`,
+        ).bind(now, note || null, ...chunk),
+      ),
+    )
+    for (const [userId, count] of rejected)
+      c.executionCtx.waitUntil(
+        notifyUsers(c.env, [userId], creationsRejectedNotification(count, note)),
+      )
+    return c.json({ updated: [...rejected.values()].reduce((sum, n) => sum + n, 0) })
   })
   .post('/import', async (c) => {
     const { categories, cards } = await readJson(c, importRequestSchema)
@@ -242,7 +305,7 @@ export const adminRoutes = new Hono<AppEnv>()
 
   .get('/settings', async (c) => c.json(await loadSettings(c.env.DB)))
   .put('/settings', async (c) => {
-    const settings = await readJson(c, boosterSettingsSchema)
+    const settings = await readJson(c, settingsSchema)
     await saveSettings(c.env.DB, settings)
     return c.json(settings)
   })
@@ -284,15 +347,3 @@ export const adminRoutes = new Hono<AppEnv>()
     await storage.delete(orphans)
     return c.json({ deleted: orphans.length })
   })
-
-async function uploadImage(env: AppEnv['Bindings'], id: string, request: Request) {
-  if (!/^[\w-]{1,100}$/.test(id)) throw new HttpError(400, 'Identifiant d’image invalide')
-  const contentType = request.headers.get('content-type') ?? ''
-  if (!contentType.startsWith('image/')) throw new HttpError(400, 'Le fichier doit être une image')
-  const data = await request.arrayBuffer()
-  if (!data.byteLength) throw new HttpError(400, 'Image vide')
-  if (data.byteLength > MAX_IMAGE_BYTES)
-    throw new HttpError(413, 'Image trop lourde (1,8 Mo maximum)')
-  await imageStorage(env).put(id, data, contentType)
-  return Response.json({ id }, { status: 201 })
-}

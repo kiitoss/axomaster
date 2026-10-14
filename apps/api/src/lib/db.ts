@@ -10,18 +10,40 @@ export interface CardRow {
   number: number | null
   updated_at: string
   published_at: string | null
+  created_by: string | null
+  rejected_at: string | null
+  review_note: string | null
 }
+
+/** Ligne de carte avec le nom de son créateur (cf. `ADMIN_CARD_SELECT`). */
+export interface AdminCardRow extends CardRow {
+  creator_name: string | null
+}
+
+/** Cartes complètes pour l'admin : à compléter par `WHERE` / `ORDER BY`. */
+export const ADMIN_CARD_SELECT =
+  'SELECT c.*, u.display_name AS creator_name FROM cards c LEFT JOIN users u ON u.id = c.created_by'
 
 /** Les cartes sont validées à l'écriture : on les relit sans revalider. */
 export function parseCard(row: Pick<CardRow, 'data'>): Card {
   return JSON.parse(row.data) as Card
 }
 
-export function toAdminCard(row: CardRow): AdminCard {
-  return { card: parseCard(row), status: row.status, publishedAt: row.published_at }
+export function toAdminCard(row: AdminCardRow): AdminCard {
+  return {
+    card: parseCard(row),
+    status: row.status,
+    publishedAt: row.published_at,
+    createdBy:
+      row.created_by && row.creator_name !== null
+        ? { id: row.created_by, displayName: row.creator_name }
+        : null,
+    rejectedAt: row.rejected_at,
+    reviewNote: row.review_note,
+  }
 }
 
-/** Crée ou met à jour une carte ; son statut de publication est conservé. */
+/** Crée ou met à jour une carte ; son statut de publication et son créateur sont conservés. */
 export function upsertCard(db: D1Database, card: Card) {
   return db
     .prepare(
@@ -33,7 +55,7 @@ export function upsertCard(db: D1Database, card: Card) {
 }
 
 export async function getAdminCard(db: D1Database, id: string) {
-  const row = await db.prepare('SELECT * FROM cards WHERE id = ?').bind(id).first<CardRow>()
+  const row = await db.prepare(`${ADMIN_CARD_SELECT} WHERE c.id = ?`).bind(id).first<AdminCardRow>()
   return row ? toAdminCard(row) : null
 }
 

@@ -4,6 +4,7 @@ import { onBeforeRouteLeave, RouterLink, useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Check, Image, Layers, Redo2, SlidersHorizontal, Undo2 } from 'lucide-vue-next'
 import { createBlankCard, type Card } from '@axomaster/card-model'
 import { useCardsStore } from '@/stores/cards'
+import { useCreationsStore } from '@/stores/creations'
 import { provideEditor } from '@/composables/editor'
 import { useHistory } from '@/composables/useHistory'
 import { useToast } from '@/composables/useToast'
@@ -18,7 +19,42 @@ import PropertiesPanel from '@/components/editor/PropertiesPanel.vue'
 const route = useRoute()
 const router = useRouter()
 const store = useCardsStore()
+const creations = useCreationsStore()
 const toast = useToast()
+
+/**
+ * L'éditeur sert aux admins (galerie) et aux joueurs (« Mes créations ») : seuls changent
+ * l'enregistrement, la page de retour et les champs réservés à l'admin (cf. PropertiesPanel).
+ */
+const admin = !!route.meta.admin
+const home = admin ? '/admin' : '/creations'
+const homeLabel = admin ? 'Galerie' : 'Mes créations'
+
+function findCard(id: string): Card | undefined {
+  if (admin) return store.getCard(id)
+  const creation = creations.getCreation(id)
+  if (creation?.status === 'published') {
+    toast.error('Cette carte est validée : elle ne peut plus être modifiée.')
+    return undefined
+  }
+  return creation?.card
+}
+
+async function saveCard(card: Card): Promise<Card> {
+  return admin ? store.saveCard(card) : (await creations.save(card)).card
+}
+
+/** Motif du refus d'une proposition, montré au joueur pendant qu'il la corrige. */
+const reviewNote = computed(() => {
+  if (admin) return null
+  const creation = creations.getCreation(draft.value.id)
+  return creation?.status === 'rejected' ? (creation.reviewNote ?? '') : null
+})
+
+const remaining = computed(() => {
+  const quota = creations.quota
+  return !admin && quota && !quota.unlimited ? quota.remaining : null
+})
 
 const draft = ref<Card>(createBlankCard(store.authorName))
 const savedJson = ref('')
@@ -41,10 +77,11 @@ const propsLabel = computed(() => {
 })
 
 function load(id: string | undefined) {
-  const existing = id ? store.getCard(id) : undefined
+  const existing = id ? findCard(id) : undefined
   if (id && !existing) {
-    toast.error('Cette carte n’existe pas (ou plus).')
-    router.replace('/admin')
+    if (admin || creations.getCreation(id)?.status !== 'published')
+      toast.error('Cette carte n’existe pas (ou plus).')
+    router.replace(home)
     return
   }
   isNew.value = !existing
@@ -74,15 +111,17 @@ async function save() {
   try {
     if (isNew.value) draft.value.author = store.authorName
     const snapshot = JSON.stringify(draft.value)
-    const saved = await store.saveCard(draft.value)
-    draft.value.updatedAt = saved.updatedAt
+    const saved = await saveCard(draft.value)
+    // Champs fixés par le serveur pour une proposition de joueur (signature, numéro).
+    const fixed = { updatedAt: saved.updatedAt, author: saved.author, number: saved.number }
+    Object.assign(draft.value, fixed)
     // Les modifications faites pendant l'envoi restent « non enregistrées ».
-    savedJson.value = JSON.stringify({ ...JSON.parse(snapshot), updatedAt: saved.updatedAt })
+    savedJson.value = JSON.stringify({ ...JSON.parse(snapshot), ...fixed })
     history.reset()
-    toast.show('Carte enregistrée')
+    toast.show(admin ? 'Carte enregistrée' : 'Carte envoyée pour validation')
     if (isNew.value) {
       isNew.value = false
-      router.replace(`/admin/editor/${saved.id}`)
+      router.replace(`${home}/editor/${saved.id}`)
     }
   } catch (err) {
     toast.error(`Enregistrement impossible : ${errorMessage(err)}`)
@@ -167,18 +206,29 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('beforeunload', onBeforeUnload)
   // Nettoie les images envoyées mais jamais enregistrées (après un délai de grâce côté serveur).
-  store.collectGarbage()
+  if (admin) store.collectGarbage()
 })
 </script>
 
 <template>
   <div class="editor">
     <div class="bar">
-      <RouterLink to="/admin" class="btn btn-ghost btn-sm back" aria-label="Retour à la galerie">
-        <ArrowLeft /> <span class="text">Galerie</span>
+      <RouterLink
+        :to="home"
+        class="btn btn-ghost btn-sm back"
+        :aria-label="`Retour : ${homeLabel}`"
+      >
+        <ArrowLeft /> <span class="text">{{ homeLabel }}</span>
       </RouterLink>
       <div class="title">
-        <span class="eyebrow">{{ isNew ? 'Nouvelle carte' : 'Modifier' }}</span>
+        <span class="eyebrow">
+          {{ isNew ? 'Nouvelle carte' : 'Modifier' }}
+          <template v-if="isNew && remaining !== null">
+            · {{ remaining }} création{{ remaining > 1 ? 's' : '' }} restante{{
+              remaining > 1 ? 's' : ''
+            }}
+          </template>
+        </span>
         <h1>{{ draft.name || 'Sans titre' }}</h1>
       </div>
       <div class="row actions">
@@ -220,10 +270,16 @@ onBeforeUnmount(() => {
           :disabled="!dirty || saving"
           @click="save"
         >
-          <Check /> Enregistrer
+          <Check /> {{ admin ? 'Enregistrer' : isNew ? 'Proposer' : 'Renvoyer' }}
         </button>
       </div>
     </div>
+
+    <p v-if="reviewNote !== null" class="review" role="note">
+      <strong>Carte refusée.</strong>
+      {{ reviewNote || 'Aucun motif précisé.' }}
+      Corrigez-la puis renvoyez-la pour une nouvelle validation.
+    </p>
 
     <div class="workspace">
       <aside v-show="!isMobile || tab === 'layers'" class="side left"><LayerPanel /></aside>
@@ -309,6 +365,15 @@ onBeforeUnmount(() => {
 
 .status.dirty {
   color: var(--accent);
+}
+
+.review {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-2);
+  font-size: 13px;
+  color: var(--ink-2);
 }
 
 .workspace {

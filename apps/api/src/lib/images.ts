@@ -1,5 +1,5 @@
 import type { Env } from '../env'
-import { placeholders } from './http'
+import { HttpError, placeholders } from './http'
 
 /** Stockage des images de cartes : R2 si le bucket est configuré, sinon une table D1. */
 export interface ImageStorage {
@@ -15,6 +15,19 @@ export const MAX_IMAGE_BYTES = 1_800_000
 
 export function imageStorage(env: Env): ImageStorage {
   return env.IMAGES ? r2Storage(env.IMAGES) : d1Storage(env.DB)
+}
+
+/** Enregistre l'image envoyée dans le corps de la requête et renvoie `201 { id }`. */
+export async function uploadImage(env: Env, id: string, request: Request) {
+  if (!/^[\w-]{1,100}$/.test(id)) throw new HttpError(400, 'Identifiant d’image invalide')
+  const contentType = request.headers.get('content-type') ?? ''
+  if (!contentType.startsWith('image/')) throw new HttpError(400, 'Le fichier doit être une image')
+  const data = await request.arrayBuffer()
+  if (!data.byteLength) throw new HttpError(400, 'Image vide')
+  if (data.byteLength > MAX_IMAGE_BYTES)
+    throw new HttpError(413, 'Image trop lourde (1,8 Mo maximum)')
+  await imageStorage(env).put(id, data, contentType)
+  return Response.json({ id }, { status: 201 })
 }
 
 function r2Storage(bucket: R2Bucket): ImageStorage {
