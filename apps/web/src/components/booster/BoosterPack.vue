@@ -10,7 +10,7 @@ const props = withDefaults(
     /** Grand paquet de la scène : inclinaison au pointeur et déchirure au geste. */
     tearable?: boolean
   }>(),
-  { caption: '', color: '#8b5cf6', tearable: false },
+  { caption: '', color: 'var(--brand)', tearable: false },
 )
 
 const emit = defineEmits<{ torn: [] }>()

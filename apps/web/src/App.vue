@@ -381,13 +381,13 @@ async function toggleNotifications() {
   padding: 7px 8px;
   border-radius: 9px;
   background: var(--night);
-  box-shadow: 0 2px 8px rgb(109 40 217 / 0.25);
+  box-shadow: 0 2px 8px rgb(var(--brand-rgb) / 0.25);
 }
 
 [data-theme='dark'] .logo-mark {
   box-shadow:
-    inset 0 0 0 1px rgb(167 139 250 / 0.35),
-    0 2px 12px rgb(124 58 237 / 0.35);
+    inset 0 0 0 1px rgb(var(--brand-light-rgb) / 0.35),
+    0 2px 12px rgb(var(--brand-rgb) / 0.35);
 }
 
 .logo-text {
@@ -507,13 +507,13 @@ async function toggleNotifications() {
   bottom: -14vmin;
   z-index: 0;
   width: 62vmin;
-  color: rgb(139 92 246 / 0.05);
+  color: rgb(var(--brand-rgb) / 0.05);
   transform: rotate(-8deg);
   pointer-events: none;
 }
 
 [data-theme='dark'] .watermark {
-  color: rgb(167 139 250 / 0.05);
+  color: rgb(var(--brand-light-rgb) / 0.05);
 }
 
 .public .main {
@@ -633,10 +633,10 @@ async function toggleNotifications() {
     height: 54px;
     margin-top: -24px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #a78bfa, #7c3aed 55%, #6d28d9);
+    background: linear-gradient(135deg, var(--brand-light), var(--brand) 55%, var(--brand-deep));
     box-shadow:
       0 0 0 4px var(--shell),
-      0 6px 18px rgb(124 58 237 / 0.45);
+      0 6px 18px rgb(var(--brand-rgb) / 0.45);
     transition:
       transform 0.2s,
       box-shadow 0.2s;
@@ -653,8 +653,8 @@ async function toggleNotifications() {
   .tab.featured.active .tab-icon {
     box-shadow:
       0 0 0 4px var(--shell),
-      0 0 0 6px rgb(167 139 250 / 0.5),
-      0 8px 24px rgb(124 58 237 / 0.6);
+      0 0 0 6px rgb(var(--brand-light-rgb) / 0.5),
+      0 8px 24px rgb(var(--brand-rgb) / 0.6);
   }
 
   .tab.featured:active .tab-icon {
@@ -665,7 +665,7 @@ async function toggleNotifications() {
     top: -2px;
     right: -4px;
     background: #fff;
-    color: #6d28d9;
+    color: var(--brand-deep);
     box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
   }
 

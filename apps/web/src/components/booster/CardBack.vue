@@ -37,7 +37,13 @@ defineProps<{
   width: 100%;
   aspect-ratio: 630 / 880;
   border-radius: 4.6% / 3.3%;
-  background: linear-gradient(155deg, #c4b5fd, #7c3aed 40%, #a78bfa 68%, #4c1d95);
+  background: linear-gradient(
+    155deg,
+    var(--brand-light),
+    var(--brand) 40%,
+    var(--brand-light) 68%,
+    var(--brand-deep)
+  );
   overflow: hidden;
 }
 
@@ -48,12 +54,12 @@ defineProps<{
   place-items: center;
   border-radius: 2.6cqw;
   background:
-    radial-gradient(70% 50% at 50% 46%, rgb(109 40 217 / 0.35), transparent 70%),
+    radial-gradient(70% 50% at 50% 46%, rgb(var(--brand-rgb) / 0.35), transparent 70%),
     radial-gradient(90% 70% at 50% 40%, #1e1b4b, #0f172a 75%);
   box-shadow:
     inset 0 0 0 0.3cqw rgb(237 233 254 / 0.3),
     inset 0 0 0 1.6cqw #0f172a,
-    inset 0 0 0 1.8cqw rgb(167 139 250 / 0.55);
+    inset 0 0 0 1.8cqw rgb(var(--brand-light-rgb) / 0.55);
   overflow: hidden;
 }
 
@@ -73,18 +79,18 @@ defineProps<{
   place-items: center;
   width: 36cqw;
   height: 36cqw;
-  border: 0.4cqw solid var(--ring, rgb(167 139 250 / 0.85));
+  border: 0.4cqw solid var(--ring, rgb(var(--brand-light-rgb) / 0.85));
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(139 92 246 / 0.22), transparent 70%);
+  background: radial-gradient(circle, rgb(var(--brand-rgb) / 0.22), transparent 70%);
   box-shadow:
     0 0 0 2cqw rgb(15 23 42 / 0.9),
-    0 0 0 2.3cqw rgb(167 139 250 / 0.35),
-    0 0 9cqw rgb(139 92 246 / 0.35);
+    0 0 0 2.3cqw rgb(var(--brand-light-rgb) / 0.35),
+    0 0 9cqw rgb(var(--brand-rgb) / 0.35);
 }
 
 .emblem .axo-x {
   width: 15cqw;
-  filter: drop-shadow(0 0 2.5cqw rgb(167 139 250 / 0.65));
+  filter: drop-shadow(0 0 2.5cqw rgb(var(--brand-light-rgb) / 0.65));
 }
 
 .label {
@@ -92,7 +98,7 @@ defineProps<{
   top: 8cqw;
   font: 600 5cqw var(--font-display);
   letter-spacing: 0.08em;
-  color: #c4b5fd;
+  color: var(--brand-light);
   font-variant-numeric: tabular-nums;
 }
 
@@ -103,7 +109,7 @@ defineProps<{
   font: 700 4cqw var(--font-display);
   letter-spacing: 0.4em;
   text-transform: uppercase;
-  color: #c4b5fd;
+  color: var(--brand-light);
 }
 
 /* Les cartes à découvrir se lisent comme des emplacements dans l'album. */

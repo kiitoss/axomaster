@@ -10,7 +10,9 @@ const props = defineProps<{
 const id = useId()
 
 const stops = computed(() =>
-  props.gradient === 'light' ? ['#ffffff', '#ede9fe'] : ['#c4b5fd', '#7c3aed'],
+  props.gradient === 'light'
+    ? ['#ffffff', 'var(--brand-light)']
+    : ['var(--brand-light)', 'var(--brand)'],
 )
 </script>
 

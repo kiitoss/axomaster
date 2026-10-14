@@ -2,35 +2,41 @@
   color-scheme: light;
 
   /* Couleurs (charte graphique) */
-  --paper: #eae6ef;
-  --paper-2: #e1dbe9;
-  --paper-3: #d3cbdf;
-  --surface: #f7f4fa;
-  --ink: #272032;
-  --ink-2: #51475f;
-  --ink-3: #73677f;
-  --line: #d8d0e2;
-  --line-strong: #bdb0cc;
-  --accent: #7545cd;
-  --accent-strong: #6533b9;
-  --accent-soft: #ded1f3;
-  --accent-tint: #eee6f8;
-  --accent-hover: #512593;
+  --brand: #7b69dc;
+  --brand-light: #c9c0ff;
+  --brand-rgb: 123 105 220;
+  --brand-light-rgb: 201 192 255;
+  /* Variante plus dense pour le texte et les boutons à petit corps. */
+  --brand-deep: #6450bc;
+  --paper: #e9e6f7;
+  --paper-2: #dfdaf3;
+  --paper-3: #c9c0e9;
+  --surface: #f6f4ff;
+  --ink: #28223e;
+  --ink-2: #504767;
+  --ink-3: #675b7d;
+  --line: #d4cdec;
+  --line-strong: #b6aad8;
+  --accent: var(--brand);
+  --accent-strong: var(--brand-deep);
+  --accent-soft: var(--brand-light);
+  --accent-tint: #e8e2ff;
+  --accent-hover: #5c48b7;
   --danger: #b42318;
   --night: #0f172a;
-  --brand-gradient: linear-gradient(90deg, #c7beff, #0ea5e9);
+  --brand-gradient: linear-gradient(90deg, var(--brand-light), var(--brand));
   /* Surfaces de navigation et d'album, communes aux deux thèmes. */
-  --shell: #21192e;
-  --shell-ink: #f5efff;
-  --shell-muted: #c0b2d2;
-  --shell-line: #443653;
-  --shell-active: #3f2e57;
-  --shell-accent: #d2b6ff;
-  --album: #dcd5e5;
-  --album-slot: #cfc5db;
-  --album-ink: #746585;
+  --shell: #26213b;
+  --shell-ink: #f6f3ff;
+  --shell-muted: #c1b8dc;
+  --shell-line: #484064;
+  --shell-active: #443963;
+  --shell-accent: var(--brand-light);
+  --album: #ddd6f2;
+  --album-slot: var(--brand-light);
+  --album-ink: #5c4c78;
   /* Barres translucides (en-tête, onglets) et voile des dialogues. */
-  --bar-bg: rgb(247 244 250 / 0.95);
+  --bar-bg: rgb(246 244 255 / 0.95);
   --backdrop: rgb(15 23 42 / 0.35);
 
   /* Typographie : Inter partout, la serif est réservée aux faces de cartes. */
@@ -64,25 +70,25 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --paper: #16121d;
-  --paper-2: #211b2b;
-  --paper-3: #382d46;
-  --surface: #272031;
-  --ink: #f0eaf7;
-  --ink-2: #cfc2df;
-  --ink-3: #a99abb;
-  --line: #3b3049;
-  --line-strong: #5c4b70;
-  --accent: #c09af5;
-  --accent-strong: #8750d5;
-  --accent-soft: #47305f;
-  --accent-tint: #31233f;
-  --accent-hover: #7740c4;
-  --album: #211b2b;
-  --album-slot: #2c2438;
-  --album-ink: #a99abb;
+  --paper: #171422;
+  --paper-2: #231e34;
+  --paper-3: #3b3257;
+  --surface: #2b253d;
+  --ink: #f1edff;
+  --ink-2: #cdc4e7;
+  --ink-3: #aea1cd;
+  --line: #403655;
+  --line-strong: #61527e;
+  --accent: var(--brand-light);
+  --accent-strong: var(--brand-deep);
+  --accent-soft: #463966;
+  --accent-tint: #342947;
+  --accent-hover: #5c48b7;
+  --album: #231e34;
+  --album-slot: #30273f;
+  --album-ink: #aea1cd;
   --danger: #f87171;
-  --bar-bg: rgb(39 32 49 / 0.95);
+  --bar-bg: rgb(43 37 61 / 0.95);
   --backdrop: rgb(2 6 23 / 0.65);
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);

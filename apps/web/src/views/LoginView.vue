@@ -93,7 +93,7 @@ async function submit() {
 }
 
 [data-theme='dark'] .watermark {
-  color: rgb(167 139 250 / 0.06);
+  color: rgb(var(--brand-light-rgb) / 0.06);
 }
 
 /* Bandeau en dégradé de la charte, en haut de page. */
@@ -110,7 +110,7 @@ async function submit() {
   right: -8vmin;
   bottom: -14vmin;
   width: 62vmin;
-  color: rgb(139 92 246 / 0.07);
+  color: rgb(var(--brand-rgb) / 0.07);
   transform: rotate(-8deg);
   pointer-events: none;
 }
