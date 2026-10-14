@@ -12,7 +12,7 @@ declare module 'vue-router' {
     public?: boolean
     /** Réservé aux administrateurs. */
     admin?: boolean
-    /** Grand X du logo en filigrane derrière la page. */
+    /** Monogramme X en filigrane derrière la page. */
     watermark?: boolean
     /** Éditeur de carte : plein écran sur mobile, sans barre d'onglets. */
     editor?: boolean

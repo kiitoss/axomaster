@@ -62,7 +62,7 @@ async function act(trade: Trade, action: keyof typeof MESSAGES) {
 <template>
   <div class="page">
     <header class="toolbar">
-      <h1>Échanges</h1>
+      <h1 class="visually-hidden">Échanges</h1>
       <button
         class="btn btn-primary"
         type="button"
@@ -102,7 +102,10 @@ async function act(trade: Trade, action: keyof typeof MESSAGES) {
         @decline="act(trade, 'decline')"
         @cancel="act(trade, 'cancel')"
       />
-      <p v-if="!trades[tab].length" class="muted none">{{ current.empty }}</p>
+      <div v-if="!trades[tab].length" class="muted none">
+        <ArrowLeftRight aria-hidden="true" />
+        <p>{{ current.empty }}</p>
+      </div>
     </section>
 
     <TradeComposer :open="composing" @close="composing = false" />
@@ -120,22 +123,19 @@ async function act(trade: Trade, action: keyof typeof MESSAGES) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
-}
-
-.toolbar h1 {
-  font-size: 32px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  justify-content: flex-end;
 }
 
 .tabs {
   display: flex;
-  gap: var(--space-5);
+  gap: var(--space-2);
+  padding: 5px;
   margin-bottom: var(--space-4);
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
 }
 
 .tabs button {
@@ -144,12 +144,13 @@ async function act(trade: Trade, action: keyof typeof MESSAGES) {
   align-items: center;
   gap: 6px;
   min-height: 40px;
-  padding: 0;
+  padding: 0 var(--space-4);
   border: 0;
   background: none;
   font: 500 14px var(--font-sans);
   color: var(--ink-3);
   cursor: pointer;
+  border-radius: var(--radius);
 }
 
 .tabs button:hover {
@@ -159,16 +160,8 @@ async function act(trade: Trade, action: keyof typeof MESSAGES) {
 .tabs button.active {
   color: var(--ink);
   font-weight: 600;
-}
-
-.tabs button.active::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: -1px;
-  left: 0;
-  height: 2px;
-  background: var(--accent);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .count {
@@ -184,8 +177,8 @@ async function act(trade: Trade, action: keyof typeof MESSAGES) {
 }
 
 .count.alert {
-  background: var(--accent);
-  color: var(--paper);
+  background: var(--accent-strong);
+  color: #fff;
 }
 
 .list {
@@ -195,9 +188,23 @@ async function act(trade: Trade, action: keyof typeof MESSAGES) {
 }
 
 .none {
-  padding: var(--space-5) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 64px var(--space-5);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
   font-size: 13px;
   text-align: center;
+}
+
+.none svg {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+  stroke-width: 1.5;
 }
 
 @media (max-width: 860px) {
@@ -205,16 +212,18 @@ async function act(trade: Trade, action: keyof typeof MESSAGES) {
     padding: var(--space-5) var(--space-4) var(--space-6);
   }
 
-  .toolbar h1 {
-    display: none;
-  }
-
   .toolbar .btn {
     flex: 1;
   }
 
   .tabs {
-    justify-content: space-around;
+    gap: 3px;
+  }
+
+  .tabs button {
+    flex: 1;
+    justify-content: center;
+    padding-inline: var(--space-2);
   }
 }
 </style>

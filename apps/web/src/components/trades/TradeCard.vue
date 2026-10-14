@@ -147,6 +147,7 @@ const sides = computed(() => [
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .trade:not(.status-pending) {

@@ -54,7 +54,12 @@ function remove(id: string, label: string) {
 <template>
   <div class="page">
     <ul class="list">
-      <li v-for="category in store.categories" :key="category.id" class="item">
+      <li
+        v-for="category in store.categories"
+        :key="category.id"
+        class="item"
+        :style="{ '--collection-color': category.color }"
+      >
         <input
           v-model="category.color"
           type="color"
@@ -104,15 +109,21 @@ function remove(id: string, label: string) {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .item {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--collection-color, var(--accent));
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .name {
@@ -143,8 +154,9 @@ function remove(id: string, label: string) {
 }
 
 .add {
-  border-bottom: 0;
-  margin-top: var(--space-3);
+  border: 1px dashed var(--line-strong);
+  background: var(--paper-2);
+  margin-top: var(--space-5);
 }
 
 @media (max-width: 860px) {
@@ -154,6 +166,16 @@ function remove(id: string, label: string) {
 
   .count {
     width: auto;
+  }
+
+  .item {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .name {
+    min-width: 120px;
   }
 }
 </style>

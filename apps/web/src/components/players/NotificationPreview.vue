@@ -1,14 +1,14 @@
 <!-- Aperçu d'une notification push, à la manière d'une notification système. -->
 <script setup lang="ts">
 import type { NotificationPayload } from '@axomaster/card-model'
-import AxoX from '@/components/brand/AxoX.vue'
+import AxoLogo from '@/components/brand/AxoLogo.vue'
 
 defineProps<{ payload: NotificationPayload }>()
 </script>
 
 <template>
   <figure class="preview" aria-label="Aperçu de la notification">
-    <span class="icon"><AxoX gradient="violet" /></span>
+    <span class="icon"><AxoLogo /></span>
     <div class="content">
       <p class="meta">AxoMaster · maintenant</p>
       <p class="title">{{ payload.title }}</p>
@@ -36,8 +36,8 @@ defineProps<{ payload: NotificationPayload }>()
   place-items: center;
   width: 38px;
   height: 38px;
-  padding: 9px 10px;
-  background: var(--night);
+  padding: 2px;
+  background: var(--logo-bg);
   border-radius: 9px;
 }
 

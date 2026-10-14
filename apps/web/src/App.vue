@@ -30,6 +30,7 @@ import { usePush } from '@/composables/usePush'
 import { useToast } from '@/composables/useToast'
 import { errorMessage } from '@/api/client'
 import ToastStack from '@/components/ui/ToastStack.vue'
+import AxoLogo from '@/components/brand/AxoLogo.vue'
 import AxoX from '@/components/brand/AxoX.vue'
 import BaseDialog from '@/components/ui/BaseDialog.vue'
 import PlayerAvatar from '@/components/players/PlayerAvatar.vue'
@@ -184,12 +185,12 @@ async function toggleNotifications() {
   <div class="app" :class="{ 'in-editor': inEditor, public: isPublic }">
     <header v-if="!isPublic" class="topbar" :class="{ 'admin-space': adminSpace }">
       <RouterLink :to="adminSpace ? '/admin' : '/'" class="logo">
-        <span class="logo-mark"><AxoX gradient="violet" /></span>
+        <span class="logo-mark"><AxoLogo /></span>
         <span class="logo-text">AxoMaster</span>
         <span v-if="adminSpace" class="logo-badge">Admin</span>
       </RouterLink>
 
-      <nav class="nav">
+      <nav class="nav" aria-label="Navigation principale">
         <RouterLink
           v-for="link in links"
           :key="link.to"
@@ -198,6 +199,7 @@ async function toggleNotifications() {
           :active-class="link.exact ? '' : 'active'"
           :exact-active-class="'active'"
         >
+          <component :is="link.icon" aria-hidden="true" />
           {{ link.label }}
           <span v-if="link.badge" class="badge">{{ link.badge }}</span>
         </RouterLink>
@@ -352,15 +354,16 @@ async function toggleNotifications() {
   top: 0;
   z-index: 50;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-5);
   align-items: center;
   height: var(--header-h);
   padding: 0 var(--space-6);
   padding-top: env(safe-area-inset-top);
   box-sizing: content-box;
-  background: var(--bar-bg);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
+  background: var(--shell);
+  color: var(--shell-ink);
+  border-bottom: 1px solid var(--shell-line);
 }
 
 .logo {
@@ -374,18 +377,9 @@ async function toggleNotifications() {
 .logo-mark {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 7px 8px;
-  border-radius: 9px;
-  background: var(--night);
-  box-shadow: 0 2px 8px rgb(109 40 217 / 0.25);
-}
-
-[data-theme='dark'] .logo-mark {
-  box-shadow:
-    inset 0 0 0 1px rgb(167 139 250 / 0.35),
-    0 2px 12px rgb(124 58 237 / 0.35);
+  width: 40px;
+  height: 40px;
+  padding: 2px;
 }
 
 .logo-text {
@@ -396,46 +390,51 @@ async function toggleNotifications() {
 .nav {
   display: flex;
   gap: var(--space-1);
+  justify-self: center;
 }
 
 .nav-link {
   position: relative;
-  padding: var(--space-2) var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
   font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--ink-2);
+  color: var(--shell-muted);
   text-decoration: none;
 }
 
 .nav-link:hover {
-  color: var(--ink);
+  color: var(--shell-ink);
+  background: var(--shell-active);
 }
 
 .nav-link.active {
-  color: var(--accent-strong);
+  color: var(--shell-ink);
+  background: var(--shell-active);
 }
 
-.nav-link.active::after {
-  content: '';
-  position: absolute;
-  left: var(--space-4);
-  right: var(--space-4);
-  bottom: -2px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--accent);
+.nav-link svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.nav-link.active svg {
+  color: var(--shell-accent);
 }
 
 .logo-badge {
   padding: 2px 6px;
   border-radius: var(--radius-sm);
-  background: var(--accent-soft);
+  background: var(--shell-active);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent-strong);
+  color: var(--shell-accent);
 }
 
 .badge {
@@ -446,7 +445,7 @@ async function toggleNotifications() {
   margin-left: 4px;
   padding: 0 5px;
   border-radius: 9px;
-  background: var(--accent);
+  background: var(--accent-strong);
   color: #fff;
   font-size: 10px;
   font-weight: 600;
@@ -461,11 +460,24 @@ async function toggleNotifications() {
   min-width: 0;
 }
 
+.account .btn-ghost {
+  color: var(--shell-muted);
+}
+
+.account .btn-ghost:hover {
+  background: var(--shell-active);
+  color: var(--shell-ink);
+}
+
+.topbar :focus-visible {
+  outline-color: var(--shell-accent);
+}
+
 .user-name {
   overflow: hidden;
-  max-width: 180px;
+  max-width: 110px;
   font: 500 14px var(--font-display);
-  color: var(--ink-2);
+  color: var(--shell-ink);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -480,20 +492,20 @@ async function toggleNotifications() {
   min-height: calc(100dvh - var(--header-h));
 }
 
-/* Grand X en filigrane, fixe derrière le contenu (comme sur la page de connexion). */
+/* Monogramme X en filigrane, fixe derrière le contenu. */
 .watermark {
   position: fixed;
   right: -8vmin;
   bottom: -14vmin;
   z-index: 0;
   width: 62vmin;
-  color: rgb(139 92 246 / 0.05);
+  color: rgb(var(--brand-rgb) / 0.05);
   transform: rotate(-8deg);
   pointer-events: none;
 }
 
 [data-theme='dark'] .watermark {
-  color: rgb(167 139 250 / 0.05);
+  color: rgb(var(--brand-light-rgb) / 0.05);
 }
 
 .public .main {
@@ -502,6 +514,23 @@ async function toggleNotifications() {
 
 .tabbar {
   display: none;
+}
+
+@media (min-width: 861px) and (max-width: 1180px) {
+  .topbar {
+    gap: var(--space-3);
+    padding-inline: var(--space-4);
+  }
+
+  .nav-link {
+    padding-inline: 8px;
+    gap: 5px;
+  }
+
+  .user-name,
+  .space-switch .text {
+    display: none;
+  }
 }
 
 @media (max-width: 860px) {
@@ -537,9 +566,8 @@ async function toggleNotifications() {
     display: grid;
     height: var(--tabbar-h);
     padding-bottom: env(safe-area-inset-bottom);
-    background: var(--bar-bg);
-    backdrop-filter: blur(8px);
-    border-top: 1px solid var(--line);
+    background: var(--shell);
+    border-top: 1px solid var(--shell-line);
   }
 
   .tab {
@@ -555,7 +583,7 @@ async function toggleNotifications() {
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.04em;
-    color: var(--ink-3);
+    color: var(--shell-muted);
     text-decoration: none;
   }
 
@@ -566,11 +594,11 @@ async function toggleNotifications() {
   }
 
   .tab.active {
-    color: var(--accent-strong);
+    color: var(--shell-accent);
   }
 
   .tab.active svg {
-    color: var(--accent);
+    color: var(--shell-accent);
   }
 
   .tab-icon {
@@ -588,7 +616,7 @@ async function toggleNotifications() {
   /* Onglet Boosters : bouton rond surélevé, pour inciter à ouvrir. */
   .tab.featured {
     font-weight: 600;
-    color: var(--accent-strong);
+    color: var(--shell-accent);
   }
 
   .tab.featured .tab-icon {
@@ -597,10 +625,10 @@ async function toggleNotifications() {
     height: 54px;
     margin-top: -24px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #a78bfa, #7c3aed 55%, #6d28d9);
+    background: linear-gradient(135deg, var(--brand-light), var(--brand) 55%, var(--brand-deep));
     box-shadow:
-      0 0 0 4px var(--surface),
-      0 6px 18px rgb(124 58 237 / 0.45);
+      0 0 0 4px var(--shell),
+      0 6px 18px rgb(var(--brand-rgb) / 0.45);
     transition:
       transform 0.2s,
       box-shadow 0.2s;
@@ -616,9 +644,9 @@ async function toggleNotifications() {
 
   .tab.featured.active .tab-icon {
     box-shadow:
-      0 0 0 4px var(--surface),
-      0 0 0 6px rgb(167 139 250 / 0.5),
-      0 8px 24px rgb(124 58 237 / 0.6);
+      0 0 0 4px var(--shell),
+      0 0 0 6px rgb(var(--brand-light-rgb) / 0.5),
+      0 8px 24px rgb(var(--brand-rgb) / 0.6);
   }
 
   .tab.featured:active .tab-icon {
@@ -629,7 +657,7 @@ async function toggleNotifications() {
     top: -2px;
     right: -4px;
     background: #fff;
-    color: #6d28d9;
+    color: var(--brand-deep);
     box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
   }
 

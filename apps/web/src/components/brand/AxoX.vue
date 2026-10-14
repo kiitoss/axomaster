@@ -1,4 +1,4 @@
-<!-- Le « X » du logo. Sans dégradé, il prend la couleur du texte (currentColor). -->
+<!-- Monogramme décoratif X. Sans dégradé, il prend la couleur du texte. -->
 <script setup lang="ts">
 import { computed, useId } from 'vue'
 
@@ -10,7 +10,9 @@ const props = defineProps<{
 const id = useId()
 
 const stops = computed(() =>
-  props.gradient === 'light' ? ['#ffffff', '#ede9fe'] : ['#c4b5fd', '#7c3aed'],
+  props.gradient === 'light'
+    ? ['#ffffff', 'var(--brand-light)']
+    : ['var(--brand-light)', 'var(--brand)'],
 )
 </script>
 

@@ -183,12 +183,19 @@ async function remove(creation: MyCreation) {
 
 .quota {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-2);
-  min-width: 280px;
-  padding: var(--space-4);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-5);
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: var(--surface);
+  background: var(--accent-tint);
+  border-left: 3px solid var(--accent);
+}
+
+.quota > :not(.btn) {
+  grid-column: 1;
 }
 
 .quota .muted {
@@ -227,8 +234,9 @@ async function remove(creation: MyCreation) {
 }
 
 .quota .btn {
-  justify-self: start;
-  margin-top: var(--space-1);
+  grid-column: 2;
+  grid-row: 1 / span 5;
+  align-self: center;
   text-decoration: none;
 }
 
@@ -238,8 +246,8 @@ async function remove(creation: MyCreation) {
 
 .section h2 {
   margin-bottom: var(--space-4);
-  font-size: 24px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .section h2:has(+ .hint) {
@@ -259,6 +267,10 @@ async function remove(creation: MyCreation) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--space-5) var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--album);
 }
 
 .item {
@@ -273,6 +285,7 @@ async function remove(creation: MyCreation) {
   background: none;
   border-radius: 12px;
   cursor: pointer;
+  box-shadow: var(--shadow);
 }
 
 .item.pending .cell {
@@ -303,12 +316,15 @@ async function remove(creation: MyCreation) {
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-7) 0;
+  padding: var(--space-7) var(--space-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
   text-align: center;
 }
 
 .empty h2 {
-  font-size: 30px;
+  font-size: 16px;
   font-weight: 500;
 }
 
@@ -320,9 +336,13 @@ async function remove(creation: MyCreation) {
   .quota {
     flex: 1 1 100%;
     min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4);
   }
 
   .quota .btn {
+    grid-column: 1;
+    grid-row: auto;
     justify-self: stretch;
     justify-content: center;
   }
@@ -330,6 +350,7 @@ async function remove(creation: MyCreation) {
   .grid {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4) var(--space-3);
+    padding: var(--space-3);
   }
 }
 

@@ -459,7 +459,7 @@ const hint = computed(() => {
   min-height: calc(100dvh - var(--header-h) - var(--tabbar-h));
   overflow: hidden;
   background:
-    radial-gradient(55% 45% at 50% 40%, rgb(76 29 149 / 0.55), transparent 70%),
+    radial-gradient(55% 45% at 50% 40%, rgb(var(--brand-rgb) / 0.4), transparent 70%),
     radial-gradient(40% 30% at 85% 100%, rgb(14 165 233 / 0.12), transparent 70%), #0f172a;
   color: #e2e8f0;
 }
@@ -513,7 +513,7 @@ const hint = computed(() => {
   width: min(100%, 900px);
   background: repeating-conic-gradient(
     from 0deg,
-    rgb(196 181 253 / 0.16) 0deg 3deg,
+    rgb(var(--brand-light-rgb) / 0.16) 0deg 3deg,
     transparent 3deg 15deg
   );
   mask: radial-gradient(closest-side, #000 20%, transparent 95%);
@@ -524,8 +524,8 @@ const hint = computed(() => {
   width: min(70%, 640px);
   background: radial-gradient(
     closest-side,
-    rgb(167 139 250 / 0.55),
-    rgb(124 58 237 / 0.25) 45%,
+    rgb(var(--brand-light-rgb) / 0.55),
+    rgb(var(--brand-rgb) / 0.25) 45%,
     transparent 100%
   );
   animation: pulse 3.2s ease-in-out infinite;
@@ -557,7 +557,7 @@ const hint = computed(() => {
 }
 
 .hero-pack :deep(.pack) {
-  filter: drop-shadow(0 0 28px rgb(139 92 246 / 0.55));
+  filter: drop-shadow(0 0 28px rgb(var(--brand-rgb) / 0.55));
   transition:
     transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
     filter 0.5s;
@@ -610,10 +610,10 @@ const hint = computed(() => {
   height: 44px;
   padding: 0 10px;
   border-radius: 22px;
-  background: linear-gradient(135deg, #a78bfa, #6d28d9);
+  background: linear-gradient(135deg, var(--brand), var(--brand-deep));
   box-shadow:
     0 0 0 3px #0f172a,
-    0 6px 20px rgb(109 40 217 / 0.6);
+    0 6px 20px rgb(var(--brand-rgb) / 0.6);
   font: 700 17px var(--font-display);
   color: #fff;
 }
@@ -644,7 +644,7 @@ const hint = computed(() => {
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #c4b5fd;
+  color: var(--brand-light);
 }
 
 /* ---------- Appel à l'action ---------- */
@@ -668,10 +668,10 @@ const hint = computed(() => {
   overflow: hidden;
   border: 0;
   border-radius: 28px;
-  background: linear-gradient(135deg, #a78bfa, #7c3aed 55%, #6d28d9);
+  background: linear-gradient(135deg, var(--brand-light), var(--brand) 55%, var(--brand-deep));
   box-shadow:
     0 0 0 1px rgb(255 255 255 / 0.15) inset,
-    0 10px 30px rgb(124 58 237 / 0.55);
+    0 10px 30px rgb(var(--brand-rgb) / 0.55);
   font: 700 17px var(--font-display);
   letter-spacing: -0.01em;
   color: #fff;
@@ -705,7 +705,7 @@ const hint = computed(() => {
   transform: translateY(-2px);
   box-shadow:
     0 0 0 1px rgb(255 255 255 / 0.2) inset,
-    0 14px 40px rgb(124 58 237 / 0.7);
+    0 14px 40px rgb(var(--brand-rgb) / 0.7);
 }
 
 .open-btn:active:not(:disabled) {
@@ -743,7 +743,7 @@ const hint = computed(() => {
 .next strong {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: #c4b5fd;
+  color: var(--brand-light);
 }
 
 /* ---------- Aide « ? » ---------- */
@@ -903,7 +903,8 @@ const hint = computed(() => {
   z-index: 200;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(70% 55% at 50% 45%, rgb(76 29 149 / 0.75), transparent 70%), #0f172a;
+  background:
+    radial-gradient(70% 55% at 50% 45%, rgb(var(--brand-rgb) / 0.55), transparent 70%), #0f172a;
   color: #e2e8f0;
   overflow: hidden;
 }
@@ -931,14 +932,14 @@ const hint = computed(() => {
 }
 
 .stage .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--brand-deep);
+  border-color: var(--brand-deep);
   color: #fff;
 }
 
 .stage .btn-primary:hover {
-  background: #7c3aed;
-  border-color: #7c3aed;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .on-dark {

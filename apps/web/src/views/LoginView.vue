@@ -47,7 +47,6 @@ async function submit() {
       </div>
 
       <form class="panel" @submit.prevent="submit">
-        <p class="eyebrow">Jeu de cartes</p>
         <h1>Axo<span>Master</span></h1>
         <p class="muted lead">Collectionnez, ouvrez des boosters et échangez vos cartes.</p>
 
@@ -90,19 +89,11 @@ async function submit() {
   position: relative;
   min-height: 100dvh;
   overflow: hidden;
-  background:
-    radial-gradient(60% 50% at 0% 100%, rgb(199 190 255 / 0.35), transparent 70%),
-    radial-gradient(50% 40% at 100% 0%, rgb(14 165 233 / 0.1), transparent 70%), var(--paper);
-}
-
-[data-theme='dark'] .login-page {
-  background:
-    radial-gradient(60% 50% at 0% 100%, rgb(109 40 217 / 0.25), transparent 70%),
-    radial-gradient(50% 40% at 100% 0%, rgb(14 165 233 / 0.08), transparent 70%), var(--paper);
+  background: linear-gradient(90deg, var(--shell) 50%, var(--paper) 50%);
 }
 
 [data-theme='dark'] .watermark {
-  color: rgb(167 139 250 / 0.06);
+  color: rgb(var(--brand-light-rgb) / 0.06);
 }
 
 /* Bandeau en dégradé de la charte, en haut de page. */
@@ -113,13 +104,13 @@ async function submit() {
   background: var(--brand-gradient);
 }
 
-/* Grand X en filigrane, débordant du coin de la page. */
+/* Monogramme X en filigrane, débordant du coin de la page. */
 .watermark {
   position: absolute;
   right: -8vmin;
   bottom: -14vmin;
   width: 62vmin;
-  color: rgb(139 92 246 / 0.07);
+  color: rgb(var(--brand-rgb) / 0.07);
   transform: rotate(-8deg);
   pointer-events: none;
 }
@@ -162,11 +153,17 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  max-width: 380px;
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-6);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 h1 {
-  font-size: 52px;
+  font-size: 42px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.035em;
@@ -187,10 +184,15 @@ h1 span {
 }
 
 .submit {
-  align-self: flex-start;
+  align-self: stretch;
+  height: 42px;
 }
 
 @media (max-width: 860px) {
+  .login-page {
+    background: var(--paper);
+  }
+
   .login {
     grid-template-columns: 1fr;
     align-content: center;
@@ -199,16 +201,18 @@ h1 span {
   }
 
   .deck {
-    width: 140px;
+    width: 110px;
   }
 
   .panel {
-    max-width: none;
+    max-width: 420px;
+    justify-self: center;
     width: 100%;
+    padding: var(--space-5);
   }
 
   h1 {
-    font-size: 42px;
+    font-size: 36px;
   }
 
   .watermark {

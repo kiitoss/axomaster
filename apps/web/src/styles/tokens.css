@@ -2,25 +2,44 @@
   color-scheme: light;
 
   /* Couleurs (charte graphique) */
-  --paper: #f8fafc;
-  --paper-2: #f1f5f9;
-  --paper-3: #e2e8f0;
-  --surface: #ffffff;
-  --ink: #0f172a;
-  --ink-2: #334155;
-  --ink-3: #64748b;
-  --line: #e2e8f0;
-  --line-strong: #cbd5e1;
-  --accent: #8b5cf6;
-  --accent-strong: #6d28d9;
-  --accent-soft: #ede9fe;
-  --accent-tint: #f5f3ff;
-  --accent-hover: #5b21b6;
+  --brand: #7b69dc;
+  --brand-light: #c9c0ff;
+  --brand-rgb: 123 105 220;
+  --brand-light-rgb: 201 192 255;
+  /* Variante plus dense pour le texte et les boutons à petit corps. */
+  --brand-deep: #6450bc;
+  --paper: #e9e6f7;
+  --paper-2: #dfdaf3;
+  --paper-3: #c9c0e9;
+  --surface: #f6f4ff;
+  --ink: #28223e;
+  --ink-2: #504767;
+  --ink-3: #675b7d;
+  --line: #d4cdec;
+  --line-strong: #b6aad8;
+  --accent: var(--brand);
+  --accent-strong: var(--brand-deep);
+  --accent-soft: var(--brand-light);
+  --accent-tint: #e8e2ff;
+  --accent-hover: #5c48b7;
   --danger: #b42318;
   --night: #0f172a;
-  --brand-gradient: linear-gradient(90deg, #c7beff, #0ea5e9);
+  --brand-gradient: linear-gradient(90deg, var(--brand-light), var(--brand));
+  /* En clair, la navigation et la progression reprennent l'aplat lavande. */
+  --shell: var(--brand-light);
+  --shell-ink: var(--ink);
+  --shell-muted: #51426d;
+  --shell-line: #ab9ddd;
+  --shell-active: #e4ddff;
+  --shell-accent: var(--brand-deep);
+  --shell-action-bg: var(--surface);
+  --shell-action-ink: var(--ink);
+  --logo-bg: var(--surface);
+  --album: #ddd6f2;
+  --album-slot: var(--brand-light);
+  --album-ink: #5c4c78;
   /* Barres translucides (en-tête, onglets) et voile des dialogues. */
-  --bar-bg: rgb(255 255 255 / 0.9);
+  --bar-bg: rgb(246 244 255 / 0.95);
   --backdrop: rgb(15 23 42 / 0.35);
 
   /* Typographie : Inter partout, la serif est réservée aux faces de cartes. */
@@ -29,11 +48,11 @@
   --font-display: var(--font-sans);
 
   /* Formes */
-  --radius-sm: 4px;
-  --radius: 6px;
-  --radius-lg: 10px;
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
-  --shadow: 0 2px 6px rgb(15 23 42 / 0.06), 0 10px 30px rgb(15 23 42 / 0.08);
+  --radius-sm: 5px;
+  --radius: 8px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 2px 3px rgb(39 32 50 / 0.06);
+  --shadow: 0 3px 8px rgb(39 32 50 / 0.08), 0 12px 24px rgb(39 32 50 / 0.1);
   --shadow-lg: 0 12px 50px rgb(15 23 42 / 0.22);
 
   /* Espacements */
@@ -54,22 +73,34 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --paper: #0b1120;
-  --paper-2: #131c31;
-  --paper-3: #1e293b;
-  --surface: #111a2e;
-  --ink: #e2e8f0;
-  --ink-2: #cbd5e1;
-  --ink-3: #94a3b8;
-  --line: #1e293b;
-  --line-strong: #334155;
-  --accent: #a78bfa;
-  --accent-strong: #7c3aed;
-  --accent-soft: rgb(139 92 246 / 0.2);
-  --accent-tint: rgb(139 92 246 / 0.1);
-  --accent-hover: #6d28d9;
+  --paper: #171422;
+  --paper-2: #231e34;
+  --paper-3: #3b3257;
+  --surface: #2b253d;
+  --ink: #f1edff;
+  --ink-2: #cdc4e7;
+  --ink-3: #aea1cd;
+  --line: #403655;
+  --line-strong: #61527e;
+  --accent: var(--brand-light);
+  --accent-strong: var(--brand-deep);
+  --accent-soft: #463966;
+  --accent-tint: #342947;
+  --accent-hover: #5c48b7;
+  --shell: #26213b;
+  --shell-ink: #f6f3ff;
+  --shell-muted: #c1b8dc;
+  --shell-line: #484064;
+  --shell-active: #443963;
+  --shell-accent: var(--brand-light);
+  --shell-action-bg: var(--brand-light);
+  --shell-action-ink: var(--shell);
+  --logo-bg: var(--night);
+  --album: #231e34;
+  --album-slot: #30273f;
+  --album-ink: #aea1cd;
   --danger: #f87171;
-  --bar-bg: rgb(11 17 32 / 0.88);
+  --bar-bg: rgb(43 37 61 / 0.95);
   --backdrop: rgb(2 6 23 / 0.65);
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);

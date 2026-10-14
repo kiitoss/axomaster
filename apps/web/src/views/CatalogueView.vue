@@ -29,6 +29,7 @@ onMounted(async () => {
 
 type Filter = 'all' | 'owned' | 'missing'
 const filter = ref<Filter>('all')
+const categoryFilter = ref('')
 
 const total = computed(() => collection.entries.length)
 const ownedCount = computed(() => collection.owned.length)
@@ -46,11 +47,8 @@ interface Tile {
   category: Category | null
 }
 
-/**
- * Une seule grille : les cartes restent regroupées par collection (dans l'ordre défini par
- * l'admin, puis les cartes sans collection), triées par numéro, sans séparation visuelle.
- */
-const tiles = computed<Tile[]>(() => {
+/** L'album suit l'ordre des collections défini par l'administrateur. */
+const sections = computed(() => {
   const byCategory = new Map<string, CatalogueEntry[]>()
   for (const entry of collection.entries) {
     const key = entryCategory(entry) ?? ''
@@ -63,21 +61,38 @@ const tiles = computed<Tile[]>(() => {
 
   return order
     .filter((key) => byCategory.has(key))
-    .flatMap((key) => {
+    .map((key) => {
       const category = store.getCategory(key)
-      return byCategory
+      const entries = byCategory
         .get(key)!
         .sort((a, b) => (entryNumber(a) ?? 1e9) - (entryNumber(b) ?? 1e9))
-        .filter((e) =>
-          filter.value === 'owned' ? e.owned : filter.value === 'missing' ? !e.owned : true,
-        )
-        .map((entry) => ({ entry, category }))
+      return {
+        id: key || '__none',
+        category,
+        total: entries.length,
+        owned: entries.filter((entry) => entry.owned).length,
+        tiles: entries.map((entry): Tile => ({ entry, category })),
+      }
     })
 })
 
+const visibleSections = computed(() =>
+  sections.value
+    .filter((section) => !categoryFilter.value || categoryFilter.value === section.id)
+    .map((section) => ({
+      ...section,
+      tiles: section.tiles.filter(({ entry }) =>
+        filter.value === 'owned' ? entry.owned : filter.value === 'missing' ? !entry.owned : true,
+      ),
+    }))
+    .filter((section) => section.tiles.length),
+)
+
 /** Cartes possédées dans l'ordre d'affichage, pour la visionneuse. */
 const ownedCards = computed<Card[]>(() =>
-  tiles.value.flatMap(({ entry }) => (entry.owned ? [entry.card] : [])),
+  visibleSections.value.flatMap((section) =>
+    section.tiles.flatMap(({ entry }) => (entry.owned ? [entry.card] : [])),
+  ),
 )
 const quantities = computed(() =>
   Object.fromEntries(collection.owned.map((e) => [e.card.id, e.quantity])),
@@ -95,10 +110,12 @@ function select(entry: CatalogueEntry) {
 
 <template>
   <div class="catalogue">
-    <section v-if="total" class="toolbar">
+    <h1 class="visually-hidden">Catalogue</h1>
+    <section v-if="total" class="collection-bar" aria-label="Votre collection">
       <div class="progress-block">
         <p class="count">
-          <strong>{{ ownedCount }}</strong> / {{ total }} carte{{ total > 1 ? 's' : '' }}
+          <strong>{{ ownedCount }}</strong>
+          <span>/ {{ total }} cartes découvertes</span>
           <span class="percent">{{ percent }} %</span>
         </p>
         <div
@@ -107,27 +124,14 @@ function select(entry: CatalogueEntry) {
           :aria-valuenow="percent"
           aria-valuemin="0"
           aria-valuemax="100"
+          aria-label="Progression du catalogue"
           :title="`${copies} exemplaire${copies > 1 ? 's' : ''} au total`"
         >
           <span :style="{ width: `${percent}%` }" />
         </div>
+        <p class="copies">{{ copies }} exemplaire{{ copies > 1 ? 's' : '' }}</p>
       </div>
       <div class="actions">
-        <div class="segmented" role="group" aria-label="Filtrer les cartes">
-          <button type="button" :class="{ active: filter === 'all' }" @click="filter = 'all'">
-            Toutes
-          </button>
-          <button type="button" :class="{ active: filter === 'owned' }" @click="filter = 'owned'">
-            Possédées
-          </button>
-          <button
-            type="button"
-            :class="{ active: filter === 'missing' }"
-            @click="filter = 'missing'"
-          >
-            À découvrir
-          </button>
-        </div>
         <RouterLink to="/creations" class="btn btn-sm"><PenLine /> Mes créations</RouterLink>
         <RouterLink to="/boosters" class="btn btn-primary btn-sm">
           <Gift /> Ouvrir un booster
@@ -135,28 +139,92 @@ function select(entry: CatalogueEntry) {
       </div>
     </section>
 
+    <div v-if="total" class="toolbar">
+      <div class="segmented" role="group" aria-label="Filtrer les cartes">
+        <button
+          type="button"
+          :class="{ active: filter === 'all' }"
+          :aria-pressed="filter === 'all'"
+          @click="filter = 'all'"
+        >
+          Toutes
+        </button>
+        <button
+          type="button"
+          :class="{ active: filter === 'owned' }"
+          :aria-pressed="filter === 'owned'"
+          @click="filter = 'owned'"
+        >
+          Possédées
+        </button>
+        <button
+          type="button"
+          :class="{ active: filter === 'missing' }"
+          :aria-pressed="filter === 'missing'"
+          @click="filter = 'missing'"
+        >
+          À découvrir
+        </button>
+      </div>
+      <select
+        v-if="sections.length > 1"
+        v-model="categoryFilter"
+        class="select"
+        aria-label="Collection"
+      >
+        <option value="">Toutes les collections</option>
+        <option v-for="section in sections" :key="section.id" :value="section.id">
+          {{ section.category?.name || 'Sans collection' }}
+        </option>
+      </select>
+    </div>
+
     <p v-if="loading && !total" class="muted">Chargement du catalogue…</p>
 
     <template v-else-if="total">
-      <section v-if="tiles.length" class="grid">
-        <button
-          v-for="{ entry, category } in tiles"
-          :key="entryId(entry)"
-          type="button"
-          class="cell"
-          :class="{ owned: entry.owned }"
-          :aria-label="
-            entry.owned ? `Voir ${entry.card.name || 'la carte'}` : 'Carte non découverte'
-          "
-          @click="select(entry)"
-        >
-          <CatalogueTile :entry="entry" :category="category" />
-        </button>
+      <section
+        v-for="section in visibleSections"
+        :key="section.id"
+        class="album-section"
+        :aria-label="section.category?.name || 'Sans collection'"
+      >
+        <header class="section-head">
+          <h2>
+            <span
+              class="category-dot"
+              :style="{ background: section.category?.color || 'var(--accent)' }"
+              aria-hidden="true"
+            />{{ section.category?.name || 'Sans collection' }}
+          </h2>
+          <span class="section-count">{{ section.owned }} / {{ section.total }}</span>
+          <div class="section-progress" aria-hidden="true">
+            <span :style="{ width: `${(section.owned / section.total) * 100}%` }" />
+          </div>
+        </header>
+        <div class="grid">
+          <button
+            v-for="{ entry, category } in section.tiles"
+            :key="entryId(entry)"
+            type="button"
+            class="cell"
+            :class="{ owned: entry.owned }"
+            :aria-label="
+              entry.owned
+                ? `Voir ${entry.card.name || 'la carte'}`
+                : `Carte ${entryNumber(entry) ?? ''} non découverte`
+            "
+            @click="select(entry)"
+          >
+            <CatalogueTile :entry="entry" :category="category" />
+          </button>
+        </div>
       </section>
 
-      <p v-else class="empty muted">
+      <p v-if="!visibleSections.length" class="empty muted">
         {{
-          filter === 'owned' ? 'Vous n’avez encore aucune carte.' : 'Vous avez toutes les cartes !'
+          filter === 'owned'
+            ? 'Aucune carte possédée dans cette sélection.'
+            : 'Toutes les cartes de cette sélection sont découvertes !'
         }}
       </p>
     </template>
@@ -186,18 +254,23 @@ function select(entry: CatalogueEntry) {
   padding: var(--space-6) var(--space-6) var(--space-7);
 }
 
-.toolbar {
+.collection-bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--shell-line);
+  border-radius: var(--radius-lg);
+  background: var(--shell);
+  color: var(--shell-ink);
   margin-bottom: var(--space-5);
 }
 
 .progress-block {
   flex: 1;
-  max-width: 420px;
+  max-width: 440px;
   min-width: 220px;
 }
 
@@ -205,27 +278,27 @@ function select(entry: CatalogueEntry) {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  color: var(--ink-3);
+  color: var(--shell-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .count strong {
-  font: 700 26px / 1 var(--font-display);
+  font: 700 36px / 1 var(--font-display);
   letter-spacing: -0.02em;
-  color: var(--ink);
+  color: var(--shell-ink);
 }
 
 .percent {
   margin-left: auto;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--shell-accent);
 }
 
 .progress {
-  height: 8px;
+  height: 5px;
   margin-top: var(--space-2);
   border-radius: 4px;
-  background: var(--paper-3);
+  background: var(--shell-line);
   overflow: hidden;
 }
 
@@ -233,7 +306,7 @@ function select(entry: CatalogueEntry) {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #a78bfa, #7c3aed);
+  background: var(--shell-accent);
   transition: width 0.6s ease;
 }
 
@@ -243,8 +316,101 @@ function select(entry: CatalogueEntry) {
   gap: var(--space-3);
 }
 
-.toolbar .btn {
+.collection-bar .btn {
   text-decoration: none;
+  height: 38px;
+  background: var(--shell-active);
+  border-color: var(--shell-line);
+  color: var(--shell-ink);
+}
+
+.collection-bar .btn:hover {
+  border-color: var(--shell-accent);
+}
+
+.collection-bar .btn-primary {
+  background: var(--shell-action-bg);
+  border-color: var(--shell-action-bg);
+  color: var(--shell-action-ink);
+}
+
+.copies {
+  margin-top: 8px;
+  color: var(--shell-muted);
+  font-size: 11px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.toolbar .select {
+  width: auto;
+  min-width: 210px;
+}
+
+.segmented button {
+  height: 32px;
+  padding-inline: var(--space-4);
+}
+
+.album-section {
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--album);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.section-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.category-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 3px;
+}
+
+.section-count {
+  margin-left: auto;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.section-progress {
+  width: 72px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--paper-3);
+  overflow: hidden;
+}
+
+.section-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
 }
 
 .segmented button {
@@ -253,8 +419,8 @@ function select(entry: CatalogueEntry) {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--space-5) var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-5);
 }
 
 .cell {
@@ -263,10 +429,24 @@ function select(entry: CatalogueEntry) {
   background: none;
   border-radius: 12px;
   cursor: default;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
 }
 
 .cell.owned {
   cursor: zoom-in;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .cell.owned {
+    transition: transform 0.2s;
+  }
+
+  .cell.owned:hover {
+    transform: translateY(-4px);
+  }
 }
 
 .empty {
@@ -274,7 +454,10 @@ function select(entry: CatalogueEntry) {
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-7) 0;
+  padding: var(--space-7) var(--space-5);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
   text-align: center;
 }
 
@@ -295,23 +478,53 @@ function select(entry: CatalogueEntry) {
     padding: var(--space-5) var(--space-4) var(--space-6);
   }
 
-  .progress-block,
-  .actions {
+  .progress-block {
     flex: 1 1 100%;
     max-width: none;
   }
 
-  .actions .segmented {
-    flex: 1;
+  .collection-bar {
+    padding: var(--space-4);
+    gap: var(--space-3);
   }
 
-  .toolbar .btn {
+  .collection-bar .actions {
     display: none;
+  }
+
+  .toolbar .segmented,
+  .toolbar .select {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .segmented button {
+    padding-inline: var(--space-2);
+    min-height: 36px;
+  }
+
+  .album-section {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .section-head {
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .section-progress {
+    width: 40px;
   }
 
   .grid {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4) var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress span {
+    transition: none;
   }
 }
 

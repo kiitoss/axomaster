@@ -68,6 +68,13 @@ apps/web              App Vue 3 + Vite + Pinia
 
 Connexion par identifiant et mot de passe ; la connexion Microsoft (Entra ID) est prévue.
 
+## Emblème et icônes
+
+L'image originale est conservée dans `apps/web/branding/axolotl-crest.png`. Le composant
+`AxoLogo` réutilise sa version WebP dans toute l'app. Le monogramme `AxoX` reste utilisé pour
+les filigranes des pages et le motif des dos de cartes. Pour régénérer le favicon et les icônes
+PWA après remplacement de l'original : `python apps/web/scripts/brand-icons.py` (Pillow requis).
+
 ## Format d'échange
 
 ```jsonc

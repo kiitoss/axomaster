@@ -17,8 +17,8 @@ self.addEventListener('push', (event) => {
       self.registration.showNotification(data.title || 'AxoMaster', {
         body: data.body || '',
         tag: data.tag,
-        icon: new URL('icon-192.png', scope).href,
-        badge: new URL('badge-96.png', scope).href,
+        icon: new URL('icon-192.png?v=3', scope).href,
+        badge: new URL('badge-96.png?v=3', scope).href,
         data: { url: new URL(data.url || './', scope).href },
       }),
       // Les onglets ouverts rafraîchissent leurs pastilles (boosters, échanges).
